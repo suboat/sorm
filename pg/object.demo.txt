@@ -1,0 +1,101 @@
+package postgres
+
+import (
+	"database/sql"
+	"github.com/suboat/sorm"
+)
+
+type Objects struct {
+	DatabaseSql *DatabaseSql
+	Result      sql.Result
+
+	skip  int //
+	limit int //
+	total int // total num of query
+	count int // fetch num of query
+}
+
+// Filter
+func (ob *Objects) Filter(t orm.M) orm.Objects {
+	return ob
+}
+
+// Count
+func (ob *Objects) Count() (int, error) {
+	return 0, nil
+}
+
+// Limit
+func (ob *Objects) Limit(n int) orm.Objects {
+	return ob
+}
+
+// Skip
+func (ob *Objects) Skip(n int) orm.Objects {
+	return ob
+}
+
+// Sort
+func (ob *Objects) Sort(fields ...string) orm.Objects {
+	return ob
+}
+
+// Meta
+func (ob *Objects) Meta() (mt *orm.Meta, err error) {
+	// may the 'limit' operating front, recount cache.
+	_, err = ob.Count()
+	// meta info
+	mt = &orm.Meta{
+		Limit:  ob.limit,
+		Skip:   ob.skip,
+		Total:  ob.total,
+		Length: ob.count,
+	}
+	return
+}
+
+// Fetch to
+func (ob *Objects) All(result interface{}) error {
+	return nil
+}
+
+// Fetch one to
+func (ob *Objects) One(result interface{}) error {
+	return nil
+}
+
+// Create
+func (ob *Objects) Create(insert interface{}) error {
+	return nil
+}
+
+// Update
+func (ob *Objects) Update(record interface{}) error {
+	return nil
+}
+
+// Delete
+func (ob *Objects) Delete() error {
+	return nil
+}
+
+// other method
+
+// Update
+func (ob *Objects) UpdateOne(record interface{}) error {
+	return nil
+}
+
+// transaction
+func (ob *Objects) TDelete(t *orm.Trans) (err error) {
+	return ob.Delete()
+}
+func (ob *Objects) TCreate(i interface{}, t *orm.Trans) (err error) {
+	return ob.Create(i)
+}
+func (ob *Objects) TUpdate(i interface{}, t *orm.Trans) (err error) {
+	return ob.Update(i)
+}
+func (ob *Objects) TUpdateOne(i interface{}, t *orm.Trans) (err error) {
+	return ob.UpdateOne(i)
+}
