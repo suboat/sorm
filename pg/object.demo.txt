@@ -2,7 +2,7 @@ package postgres
 
 import (
 	"database/sql"
-	"github.com/suboat/sorm"
+	"git.yichui.net/open/orm"
 )
 
 type Objects struct {

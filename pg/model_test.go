@@ -3,7 +3,7 @@ package postgres
 import (
 	"database/sql/driver"
 	"encoding/json"
-	"github.com/suboat/sorm"
+	"git.yichui.net/open/orm"
 	"testing"
 	"time"
 )

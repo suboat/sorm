@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	"github.com/suboat/sorm"
-	"github.com/suboat/sorm/log"
+	"git.yichui.net/open/orm"
+	"git.yichui.net/open/orm/log"
 
 	"database/sql"
 	"encoding/json"
@@ -145,11 +145,25 @@ func (ob *Objects) All(result interface{}) (err error) {
 	if err = ob.updateQuery(); err != nil {
 		return
 	}
+	if ob.limit == 0 {
+		ob.cacheQueryLimit = fmt.Sprintf("OFFSET %d", ob.skip)
+	}
+	return ob.all(result)
+}
+func (ob *Objects) AllDebug(result interface{}) (err error) {
+	if err = ob.updateQuery(); err != nil {
+		return
+	}
 	// debug
 	if ob.limit == 0 || ob.limit > 1000 {
+		if ob.limit > 1000 {
+			log.Warn("!!!Debug limit set to 1000: ", " ", ob.limit, ob.cacheQueryLimit)
+		}
 		ob.cacheQueryLimit = fmt.Sprintf("LIMIT %d OFFSET %d", 1000, ob.skip)
 	}
-
+	return ob.all(result)
+}
+func (ob *Objects) all(result interface{}) (err error) {
 	var _sql string
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
@@ -272,12 +286,13 @@ func (ob *Objects) update(ex execer, record interface{}) (err error) {
 					}
 				}
 
+				// TODO: performace
 				if queryWhere, _, err = ob.queryM.Sql(DatabaseHash, len(args)); err != nil {
 					return
 				}
 				query = ob.Model.DatabaseSql.DB.Rebind(query + " WHERE " + queryWhere)
 				args = append(args, ob.cacheQueryValues...)
-				log.Debug("update with map: ", query, " vals: ", args)
+				log.Debug("update with map: ", query, " vals: ", args, " org: ", ob.cacheQueryValues)
 				ob.Result, err = ex.Exec(query, args...)
 			}
 
@@ -300,6 +315,7 @@ func (ob *Objects) update(ex execer, record interface{}) (err error) {
 				return
 			}
 			// use special where contig
+			// TODO: performace
 			if queryWhere, _, err = ob.queryM.Sql(DatabaseHash, len(args)); err != nil {
 				return
 			}
@@ -380,6 +396,7 @@ func (ob *Objects) TUpdateOne(record interface{}, t orm.Trans) (err error) {
 // buildin method
 // update query cache
 func (ob *Objects) updateQuery() (err error) {
+	//log.Warn("ob.cacheQueryValues ", ob.cacheQueryWhere, " ", ob.cacheQueryValues)
 	// query all
 	if ob.queryM == nil {
 		ob.cacheQueryValues = nil
@@ -394,6 +411,7 @@ func (ob *Objects) updateQuery() (err error) {
 	if ob.cacheQueryWhere, ob.cacheQueryValues, err = ob.queryM.Sql(DatabaseHash); err != nil {
 		return
 	}
+	//log.Warn("ob.cacheQueryValues ", ob.cacheQueryWhere, " ", ob.cacheQueryValues)
 	ob.cacheQueryExist = true
 	ob.cacheQueryClean = false
 	return

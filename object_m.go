@@ -2,7 +2,8 @@ package orm
 
 import (
 	"fmt"
-	"github.com/suboat/sorm/log"
+	"git.yichui.net/open/orm/log"
+	"sort"
 	"strings"
 )
 
@@ -52,6 +53,15 @@ func (m M) Get(k string) interface{} {
 	return m[k]
 }
 
+func (m M) GetString(k string) (s string) {
+	if v, ok := m[k]; ok == true {
+		if _s, _ok := v.(string); _ok == true {
+			s = _s
+		}
+	}
+	return
+}
+
 func (m M) Hav(k string) (ok bool) {
 	_, ok = m[k]
 	return
@@ -97,6 +107,9 @@ func parserSql(k string, v interface{}, idx int) (sql string, val interface{}, e
 			sql = fmt.Sprintf("%s >= $%d", k, idx)
 			val = _val
 			break
+		case TagValNo:
+			sql = fmt.Sprintf("%s != $%d", k, idx)
+			val = _val
 		default:
 			val = v
 			break
@@ -129,7 +142,19 @@ func (m M) Sql(driverHash Hash, args ...interface{}) (sql string, vals []interfa
 		break
 	}
 
-	for k, v := range m {
+	// 相同的map,for的顺序可能不同,会导致bug
+	var (
+		kIdx int = 0
+		kLis     = make([]string, len(m))
+	)
+	for k, _ := range m {
+		kLis[kIdx] = k
+		kIdx += 1
+	}
+	sort.Strings(kLis)
+	//for k, v := range m {
+	for _, k := range kLis {
+		v := m[k]
 		// and or 查询,只支持一级嵌套
 		switch k {
 		case TagQueryKeyOr, TagQueryKeyAnd:

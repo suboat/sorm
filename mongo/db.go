@@ -3,7 +3,7 @@ package mongo
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/suboat/sorm"
+	"git.yichui.net/open/orm"
 	"gopkg.in/mgo.v2"
 )
 
