@@ -1,8 +1,8 @@
 package postgres
 
 import (
-	"git.yichui.net/open/orm"
-	"git.yichui.net/open/orm/log"
+	"github.com/suboat/sorm"
+	"github.com/suboat/sorm/log"
 
 	"database/sql"
 	"encoding/json"

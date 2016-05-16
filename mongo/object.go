@@ -1,7 +1,7 @@
 package mongo
 
 import (
-	"git.yichui.net/open/orm"
+	"github.com/suboat/sorm"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"reflect"

@@ -3,7 +3,7 @@ package postgres
 import (
 	"database/sql"
 
-	"git.yichui.net/open/orm"
+	"github.com/suboat/sorm"
 	"github.com/jmoiron/sqlx"
 )
 

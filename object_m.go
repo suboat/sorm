@@ -2,7 +2,7 @@ package orm
 
 import (
 	"fmt"
-	"git.yichui.net/open/orm/log"
+	"github.com/suboat/sorm/log"
 	"sort"
 	"strings"
 )

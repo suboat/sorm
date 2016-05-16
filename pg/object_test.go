@@ -1,7 +1,7 @@
 package postgres
 
 import (
-	"git.yichui.net/open/orm"
+	"github.com/suboat/sorm"
 	"testing"
 	"time"
 )
