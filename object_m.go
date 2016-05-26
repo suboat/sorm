@@ -155,7 +155,10 @@ func (m M) Sql(driverHash Hash, args ...interface{}) (sql string, vals []interfa
 	//for k, v := range m {
 	for _, k := range kLis {
 		v := m[k]
-		// and or 查询,只支持一级嵌套
+		// and or 查询
+		// or: 只支持一级嵌套
+		// and: 支持二级嵌套
+		// TODO: 优化
 		switch k {
 		case TagQueryKeyOr, TagQueryKeyAnd:
 			// 解析语句
@@ -164,13 +167,38 @@ func (m M) Sql(driverHash Hash, args ...interface{}) (sql string, vals []interfa
 				for _, v2 := range _lis {
 					if _m, ok := v2.(map[string]interface{}); ok {
 						for k, v := range _m {
-							idx += 1
-							if _sql, _val, err2 := parserSql(k, v, idx); err2 == nil {
-								_nameLis = append(_nameLis, _sql)
-								vals = append(vals, _val)
+							// 二级嵌套 and
+							if k == TagQueryKeyAnd {
+								if _lis2, ok := v.([]interface{}); ok == true {
+									_nameLis2 := []string{}
+									for _, v3 := range _lis2 {
+										if _m, ok := v3.(map[string]interface{}); ok {
+											for k, v := range _m {
+												idx += 1
+												if _sql, _val, err2 := parserSql(k, v, idx); err2 == nil {
+													_nameLis2 = append(_nameLis2, _sql)
+													vals = append(vals, _val)
+												} else {
+													err = err2
+													return
+												}
+											}
+										}
+									}
+									// AND 查询
+									if len(_nameLis2) > 0 {
+										_nameLis = append(_nameLis, "("+strings.Join(_nameLis2, " AND ")+")")
+									}
+								}
 							} else {
-								err = err2
-								return
+								idx += 1
+								if _sql, _val, err2 := parserSql(k, v, idx); err2 == nil {
+									_nameLis = append(_nameLis, _sql)
+									vals = append(vals, _val)
+								} else {
+									err = err2
+									return
+								}
 							}
 						}
 					}
