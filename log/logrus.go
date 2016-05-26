@@ -28,7 +28,8 @@ func init() {
 	Log.Out = os.Stderr
 	// test
 	SetFlags(log.Llongfile)
-	SetLevel(logrus.DebugLevel)
+	//SetLevel(logrus.DebugLevel)
+	SetLevel(logrus.ErrorLevel)
 }
 
 //
