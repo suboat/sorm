@@ -34,7 +34,11 @@ func (a Accession) Value() (driver.Value, error) {
 
 // sql: Scan implements the sql.Scanner interface
 func (a *Accession) Scan(src interface{}) error {
-	*a = Accession(string(src.([]uint8)))
+	if _s, _ok := src.(string); _ok == true {
+		*a = Accession(_s)
+	} else {
+		*a = Accession(string(src.([]uint8)))
+	}
 	return nil
 }
 

@@ -49,7 +49,11 @@ func (u Uid) Value() (driver.Value, error) {
 
 // sql: Scan implements the sql.Scanner interface
 func (u *Uid) Scan(src interface{}) error {
-	*u = Uid(string(src.([]uint8)))
+	if _s, _ok := src.(string); _ok == true {
+		*u = Uid(_s)
+	} else {
+		*u = Uid(string(src.([]uint8)))
+	}
 	return nil
 }
 
