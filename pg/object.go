@@ -13,7 +13,7 @@ import (
 
 type Objects struct {
 	Model  *Model
-	Result sql.Result
+	Result orm.Result
 
 	// query and meta
 	skip  int //
@@ -37,6 +37,14 @@ type Objects struct {
 type execer interface {
 	Exec(query string, args ...interface{}) (sql.Result, error)
 	NamedExec(query string, arg interface{}) (sql.Result, error)
+	Get(dest interface{}, query string, args ...interface{}) error
+	Select(dest interface{}, query string, args ...interface{}) error
+}
+
+// result
+func (ob *Objects) GetResult() (res orm.Result, err error) {
+	res = ob.Result
+	return
 }
 
 // Filter
@@ -51,35 +59,6 @@ func (ob *Objects) Filter(t orm.M) orm.Objects {
 	ob.queryM.Update(&t)
 	ob.cacheQueryClean = true
 	return ob
-}
-
-// Count
-func (ob *Objects) Count() (num int, err error) {
-	if err = ob.updateQuery(); err != nil {
-		return
-	}
-	var sqlCmd string
-	if len(ob.cacheQueryWhere) == 0 {
-		// select all
-		sqlCmd = "SELECT count(*) FROM " + ob.Model.TableName
-		err = ob.Model.DatabaseSql.DB.Get(&num, sqlCmd)
-	} else {
-		//sqlCmd = "SELECT count(*) FROM " + ob.Model.TableName + " WHERE " + ob.cacheQueryWhere + " " + ob.cacheQueryLimit
-		sqlCmd = "SELECT count(*) FROM " + ob.Model.TableName + " WHERE " + ob.cacheQueryWhere // count have not limit
-		err = ob.Model.DatabaseSql.DB.Get(&num, sqlCmd, ob.cacheQueryValues...)
-	}
-	if err == nil {
-		ob.total = num
-		// debug
-		if num == 0 {
-			log.Warn("count zero: ", ob.cacheQueryWhere, ob.cacheQueryValues)
-		} else {
-			// debug
-			// "SELECT * FROM "+ob.Model.TableName+" WHERE "+ob.cacheQueryWhere+ob.cacheQueryOrder+" "+ob.cacheQueryLimit,
-			//log.Warn("check: ", sqlCmd, " ", ob.cacheQueryValues)
-		}
-	}
-	return
 }
 
 // Limit
@@ -148,7 +127,16 @@ func (ob *Objects) All(result interface{}) (err error) {
 	if ob.limit == 0 {
 		ob.cacheQueryLimit = fmt.Sprintf("OFFSET %d", ob.skip)
 	}
-	return ob.all(result)
+	return ob.all(ob.Model.DatabaseSql.DB, result)
+}
+func (ob *Objects) TAll(result interface{}, t orm.Trans) (err error) {
+	if err = ob.updateQuery(); err != nil {
+		return
+	}
+	if ob.limit == 0 {
+		ob.cacheQueryLimit = fmt.Sprintf("OFFSET %d", ob.skip)
+	}
+	return ob.all(t, result)
 }
 func (ob *Objects) AllDebug(result interface{}) (err error) {
 	if err = ob.updateQuery(); err != nil {
@@ -161,18 +149,18 @@ func (ob *Objects) AllDebug(result interface{}) (err error) {
 		}
 		ob.cacheQueryLimit = fmt.Sprintf("LIMIT %d OFFSET %d", 1000, ob.skip)
 	}
-	return ob.all(result)
+	return ob.all(ob.Model.DatabaseSql.DB, result)
 }
-func (ob *Objects) all(result interface{}) (err error) {
+func (ob *Objects) all(ex execer, result interface{}) (err error) {
 	var _sql string
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
 		_sql = "SELECT * FROM " + ob.Model.TableName + " " + ob.cacheQueryOrder + " " + ob.cacheQueryLimit
-		err = ob.Model.DatabaseSql.DB.Select(result, _sql)
+		err = ex.Select(result, _sql)
 	} else {
 		// select query
 		_sql = "SELECT * FROM " + ob.Model.TableName + " WHERE " + ob.cacheQueryWhere + " " + ob.cacheQueryOrder + " " + ob.cacheQueryLimit
-		err = ob.Model.DatabaseSql.DB.Select(result, _sql, ob.cacheQueryValues...)
+		err = ex.Select(result, _sql, ob.cacheQueryValues...)
 	}
 
 	// count
@@ -184,6 +172,62 @@ func (ob *Objects) all(result interface{}) (err error) {
 	}
 
 	log.Debug("sql: ", _sql)
+	return
+}
+
+// Count
+func (ob *Objects) Count() (num int, err error) {
+	num, err = ob.countDo(ob.Model.DatabaseSql.DB)
+	return
+}
+
+func (ob *Objects) TCount(t orm.Trans) (num int, err error) {
+	return ob.countDo(t)
+}
+
+// Count
+func (ob *Objects) countDo(ex execer) (num int, err error) {
+	if err = ob.updateQuery(); err != nil {
+		return
+	}
+	var sqlCmd string
+	if len(ob.cacheQueryWhere) == 0 {
+		// select all
+		sqlCmd = "SELECT count(*) FROM " + ob.Model.TableName
+		err = ex.Get(&num, sqlCmd)
+	} else {
+		//sqlCmd = "SELECT count(*) FROM " + ob.Model.TableName + " WHERE " + ob.cacheQueryWhere + " " + ob.cacheQueryLimit
+		sqlCmd = "SELECT count(*) FROM " + ob.Model.TableName + " WHERE " + ob.cacheQueryWhere // count have not limit
+		err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...)
+	}
+	if err == nil {
+		ob.total = num
+		// debug
+		if num == 0 {
+			log.Debug("count zero: ", ob.cacheQueryWhere, ob.cacheQueryValues)
+		} else {
+			// debug
+			// "SELECT * FROM "+ob.Model.TableName+" WHERE "+ob.cacheQueryWhere+ob.cacheQueryOrder+" "+ob.cacheQueryLimit,
+			//log.Warn("check: ", sqlCmd, " ", ob.cacheQueryValues)
+		}
+	}
+	return
+}
+
+// fetch one
+func (ob *Objects) TOne(result interface{}, t orm.Trans) (err error) {
+	if _, err = ob.TCount(t); err != nil {
+		return
+	}
+	if ob.total == 1 {
+		err = t.Get(result,
+			"SELECT * FROM "+ob.Model.TableName+" WHERE "+ob.cacheQueryWhere+ob.cacheQueryOrder+" "+ob.cacheQueryLimit,
+			ob.cacheQueryValues...)
+	} else if ob.total == 0 {
+		err = orm.ErrNotExist
+	} else {
+		err = orm.ErrFetchOneDuplicate
+	}
 	return
 }
 
@@ -218,9 +262,9 @@ func (ob *Objects) create(ex execer, insert interface{}) (err error) {
 	sqlCmd := fmt.Sprintf("INSERT INTO %s;", ob.Model.ContigInsert)
 	ob.Result, err = ex.NamedExec(sqlCmd, insert)
 	if err != nil {
-		log.Error("sql: ", sqlCmd, " vals: ", insert)
+		log.Error("create sql: ", sqlCmd, " vals: ", insert)
 	} else {
-		log.Debug("sql: ", sqlCmd, " vals: ", insert)
+		log.Debug("create sql: ", sqlCmd, " vals: ", insert)
 	}
 	return
 }
@@ -243,15 +287,37 @@ func (ob *Objects) update(ex execer, record interface{}) (err error) {
 				queryWhere string
 				args       []interface{}
 				setLis     = []string{}
+				fixMap     = map[string]interface{}{}
 			)
 
-			for k, _ := range m {
+			for k, v := range m {
 				// simple prevent SQL injection
 				if strings.Index(k, " ") > -1 {
 					err = orm.ErrMInvalid
 					return
 				}
-				setLis = append(setLis, fmt.Sprintf("%s=:%s", k, k))
+				switch k {
+				case orm.TagUpdateInc:
+					if _m, _ok := v.(map[string]interface{}); _ok == true {
+						for _k, _v := range _m {
+							setLis = append(setLis, fmt.Sprintf("%s=%s+:%s", _k, _k, _k))
+							fixMap[_k] = _v
+						}
+					} else {
+						err = orm.ErrMValIncInvalid
+						return
+					}
+					break
+				default:
+					setLis = append(setLis, fmt.Sprintf("%s=:%s", k, k))
+					break
+				}
+			}
+
+			// fix
+			delete(m, orm.TagUpdateInc)
+			for k, v := range fixMap {
+				m[k] = v
 			}
 
 			query = fmt.Sprintf("UPDATE %s SET %s", ob.Model.TableName, strings.Join(setLis, ", "))
@@ -286,14 +352,17 @@ func (ob *Objects) update(ex execer, record interface{}) (err error) {
 					}
 				}
 
-				// TODO: performace
+				// TODO: performance
 				if queryWhere, _, err = ob.queryM.Sql(DatabaseHash, len(args)); err != nil {
 					return
 				}
 				query = ob.Model.DatabaseSql.DB.Rebind(query + " WHERE " + queryWhere)
 				args = append(args, ob.cacheQueryValues...)
-				log.Debug("update with map: ", query, " vals: ", args, " org: ", ob.cacheQueryValues)
-				ob.Result, err = ex.Exec(query, args...)
+				if ob.Result, err = ex.Exec(query, args...); err != nil {
+					log.Error(query, " ", args, err)
+				} else {
+					log.Debug("update with map: ", query, " vals: ", args)
+				}
 			}
 
 			return
@@ -315,7 +384,7 @@ func (ob *Objects) update(ex execer, record interface{}) (err error) {
 				return
 			}
 			// use special where contig
-			// TODO: performace
+			// TODO: performance
 			if queryWhere, _, err = ob.queryM.Sql(DatabaseHash, len(args)); err != nil {
 				return
 			}
@@ -369,14 +438,17 @@ func (ob *Objects) UpdateOne(record interface{}) (err error) {
 // transaction
 func (ob *Objects) TDelete(t orm.Trans) (err error) {
 	err = ob.delete(t)
+	t.DebugPush("[delete]" + ob.cacheQueryWhere)
 	return
 }
 func (ob *Objects) TCreate(insert interface{}, t orm.Trans) (err error) {
 	err = ob.create(t, insert)
+	t.DebugPush("[create]" + ob.cacheQueryWhere)
 	return
 }
 func (ob *Objects) TUpdate(record interface{}, t orm.Trans) (err error) {
 	err = ob.update(t, record)
+	t.DebugPush("[update]" + ob.cacheQueryWhere)
 	return
 }
 func (ob *Objects) TUpdateOne(record interface{}, t orm.Trans) (err error) {
@@ -390,6 +462,7 @@ func (ob *Objects) TUpdateOne(record interface{}, t orm.Trans) (err error) {
 	} else {
 		err = orm.ErrUpdateOneObjectMult
 	}
+	t.DebugPush("[updateOne]" + ob.cacheQueryWhere)
 	return
 }
 
@@ -414,5 +487,26 @@ func (ob *Objects) updateQuery() (err error) {
 	//log.Warn("ob.cacheQueryValues ", ob.cacheQueryWhere, " ", ob.cacheQueryValues)
 	ob.cacheQueryExist = true
 	ob.cacheQueryClean = false
+	return
+}
+
+// row lock
+func (ob *Objects) TLockUpdate(t orm.Trans) (err error) {
+	if err = ob.updateQuery(); err != nil {
+		return
+	}
+	var sqlCmd string
+	if len(ob.cacheQueryWhere) == 0 {
+		// select all
+		err = orm.ErrTransLockWholeTable
+		return
+	} else {
+		sqlCmd = "SELECT * FROM " + ob.Model.TableName + " WHERE " + ob.cacheQueryWhere + " FOR UPDATE"
+	}
+	if ob.Result, err = t.Exec(sqlCmd, ob.cacheQueryValues...); err != nil {
+		log.Warn(sqlCmd, " ", ob.cacheQueryValues, " ", err.Error())
+	} else {
+		log.Debug(sqlCmd, ob.cacheQueryValues)
+	}
 	return
 }

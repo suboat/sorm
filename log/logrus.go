@@ -29,6 +29,7 @@ func init() {
 	// test
 	SetFlags(log.Llongfile)
 	//SetLevel(logrus.DebugLevel)
+	//SetLevel(logrus.InfoLevel)
 	SetLevel(logrus.ErrorLevel)
 }
 

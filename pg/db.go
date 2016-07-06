@@ -13,6 +13,7 @@ import (
 var (
 	DatabaseType = "postgres"
 	DatabaseHash = orm.Postgres
+	MaxOpenConns = 50 // default
 )
 
 // 数据库链接参数
@@ -115,6 +116,8 @@ func NewDb(arg string) (orm.Database, error) {
 	if err = db.Reset(); err != nil {
 		return nil, err
 	}
+
+	db.DB.SetMaxOpenConns(MaxOpenConns)
 
 	return db, err
 }

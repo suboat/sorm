@@ -6,7 +6,7 @@ import (
 )
 
 var (
-	testConfig = `{"user":"suboat", "password": "suboat123", "host": "192.168.199.188", "dbname": "suboat", "sslmode": "disable"}`
+	testConfig = `{"user":"suboat", "password": "suboat123", "host": "172.16.210.132", "port": "5432", "dbname": "suboat", "sslmode": "disable"}`
 	testDb     orm.Database
 )
 

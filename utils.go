@@ -19,6 +19,7 @@ type FieldInfo struct {
 	Kind       string
 	Primary    bool
 	Index      bool
+	Serial     bool
 	IndexKeys  []string
 	Unique     bool
 	UniqueKeys []string
@@ -128,6 +129,9 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, m *map[string]int) (res 
 			case reflect.Int:
 				info.Kind = "integer"
 				break
+			case reflect.Int64:
+				info.Kind = "bigint"
+				break
 			case reflect.Uint:
 				info.Kind = "unit"
 				break
@@ -182,6 +186,7 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, m *map[string]int) (res 
 					k := r[1]
 					v := r[3]
 					// parser
+					//println("debug", tbName, info.Name, k, v)
 					if k == "primary" {
 						info.Primary = true
 					} else if k == "index" {
@@ -206,6 +211,17 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, m *map[string]int) (res 
 						info.Size = int64(i)
 						if info.Kind == "text" {
 							info.Kind = "varchar"
+						}
+					} else if k == "serial" {
+						if info.Kind == "bigint" {
+							info.Kind = "bigserial"
+							info.Serial = true
+						} else if info.Kind == "integer" {
+							info.Kind = "serial"
+							info.Serial = true
+						}
+						if info.Serial == true {
+							info.Primary = true
 						}
 					}
 				}

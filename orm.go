@@ -30,12 +30,17 @@ const (
 	TagQueryKeyOr  = `%or%`
 	TagQueryKeyAnd = `%and%`
 	TagQueryKeyIn  = `%in%`
+	// mean update
+	TagUpdateInc = `%inc%` // 数据库级别增
 )
 
-// log
 var (
+	// log
 	Debug          = false
 	DebugLevel int = 0
+	// trans
+	//TransTimeout = time.Second * 20 // debug
+	TransTimeout = time.Minute * 10 // 事务悬浮10分钟后自动回滚
 )
 
 type Database interface {

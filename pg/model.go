@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 )
 
 type Model struct {
@@ -17,8 +18,9 @@ type Model struct {
 	DatabaseSql *DatabaseSql
 	Result      sql.Result
 	// sql contig of objects
-	ContigInsert string
-	ContigUpdate string
+	ContigInsert       string
+	ContigUpdate       string
+	AutoIncrementField string
 }
 
 // index info of SQL-like database
@@ -55,8 +57,10 @@ func (m *Model) ContigParse(st interface{}) (err error) {
 		return
 	}
 	for _, f := range fieldInfoLis {
-		columns = append(columns, f.Name)
-		values = append(values, ":"+f.Name)
+		if f.Name != m.AutoIncrementField {
+			columns = append(columns, f.Name)
+			values = append(values, ":"+f.Name)
+		}
 	}
 	m.ContigInsert = fmt.Sprintf("%s (%s) VALUES (%s)", m.TableName, strings.Join(columns, ", "), strings.Join(values, ", "))
 	m.ContigUpdate = fmt.Sprintf("%s SET (%s) = (%s)", m.TableName, strings.Join(columns, ", "), strings.Join(values, ", "))
@@ -99,6 +103,13 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			// use timezone
 			f.Kind = "timestamp with time zone"
 			break
+		case "serial", "bigserial":
+			if len(m.AutoIncrementField) > 0 {
+				err = fmt.Errorf("dunplicatly AutoIncrementField, last: '%s' now: '%s'", m.AutoIncrementField, f.Name)
+				return
+			}
+			m.AutoIncrementField = f.Name
+			break
 		default:
 			break
 		}
@@ -106,7 +117,9 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		// pk
 		if f.Primary == true {
 			if len(primaryKey) > 0 {
-				log.Warn("define dunplicatly primary key, use last: ", primaryKey, " ", f.Name)
+				//log.Warn("define dunplicatly primary key, use last: ", primaryKey, " ", f.Name)
+				err = fmt.Errorf("define dunplicatly primary key, use last: %s %s", primaryKey, f.Name)
+				return
 			}
 			primaryKey = f.Name
 		}
@@ -127,6 +140,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 	colCmd := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
 
 	//log.Debug(colCmd)
+	//println(colCmd)
 	if m.Result, err = m.DatabaseSql.DB.Exec(colCmd); err != nil {
 		log.Error("sql: ", colCmd, " error: ", err.Error())
 		return
@@ -222,7 +236,8 @@ func (m *Model) EnsureIndexWithTag(st interface{}) (err error) {
 	return
 }
 
-// 事务
+// **事务
+// 事务起始
 func (m *Model) Begin() (orm.Trans, error) {
 	var (
 		t   = &Trans{}
@@ -231,8 +246,64 @@ func (m *Model) Begin() (orm.Trans, error) {
 	if t.Tx, err = m.DatabaseSql.DB.Beginx(); err != nil {
 		return t, err
 	}
+
+	// 超时回滚
+	t.timer = time.NewTimer(orm.TransTimeout)
+	go func() {
+		defer func() {
+			if _err := recover(); _err != nil {
+				log.Error(err)
+			}
+		}()
+
+		<-t.timer.C
+		// timeout
+		if t.isFinish == false {
+			// log sql history
+			var report = fmt.Sprintf("[TRANS-TIMEOUT] tableName=%s sql=%s", m.TableName, t.debugReport())
+			log.Error(report)
+			m.Rollback(t)
+		}
+	}()
+
 	return t, err
 }
+
+// 声明级别的事务
+func (m *Model) BeginLevel(level string) (t orm.Trans, err error) {
+	if t, err = m.Begin(); err != nil {
+		return
+	}
+	switch level {
+	case orm.TransReadUncommitted:
+		if _, err = t.Exec("set transaction isolation level read uncommitted"); err != nil {
+			return
+		}
+		break
+	case orm.TransReadCommitted:
+		if _, err = t.Exec("set transaction isolation level read committed"); err != nil {
+			return
+		}
+		break
+	case orm.TransRepeatableRead:
+		if _, err = t.Exec("set transaction isolation level repeatable read"); err != nil {
+			return
+		}
+		break
+	case orm.TransSerializable:
+		if _, err = t.Exec("set transaction isolation level serializable"); err != nil {
+			return
+		}
+		break
+	default:
+		err = orm.ErrTransLevelUnknown
+		t.Rollback()
+		return
+		break
+	}
+	return
+}
+
 func (m *Model) Rollback(t orm.Trans) error {
 	if t == nil {
 		return orm.ErrTransEmpty
@@ -257,5 +328,11 @@ func (m *Model) AutoTrans(t orm.Trans) (err error) {
 		// commit
 		err = t.Commit()
 	}
+	return
+}
+
+// 执行语句
+func (m *Model) Exec(query string, args ...interface{}) (result orm.Result, err error) {
+	result, err = m.DatabaseSql.DB.Exec(query, args...)
 	return
 }
