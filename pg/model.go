@@ -83,7 +83,30 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		fieldInfoLis []*orm.FieldInfo
 		colCmdLis    = []string{}
 		primaryKey   = ""
+		colCmd       = ""
+		tableExist   = 0
+		fieldExist   = make(map[string]bool)
 	)
+	// table exist
+	if err = m.DatabaseSql.DB.Get(&tableExist,
+		"SELECT count(*) FROM information_schema.tables WHERE table_name=$1", m.TableName); err != nil {
+		log.Error("check table exist ", err)
+		return
+	}
+	if tableExist == 1 {
+		// test column
+		var columnLis = []string{}
+		if err = m.DatabaseSql.DB.Select(&columnLis,
+			"SELECT column_name FROM information_schema.columns WHERE table_name=$1", m.TableName); err != nil {
+			log.Error("select column ", err)
+			return
+		} else {
+			for _, col := range columnLis {
+				fieldExist[col] = true
+			}
+		}
+	}
+	// fields parser
 	if fieldInfoLis, err = orm.StructModelInfo(st); err != nil {
 		return
 	}
@@ -124,27 +147,48 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			primaryKey = f.Name
 		}
 
-		if f.Kind == "varchar" && f.Size > 0 {
-			colCmdLis = append(colCmdLis, fmt.Sprintf("\"%s\" %s(%d)", f.Name, f.Kind, f.Size))
+		if tableExist == 1 {
+			if _, ok := fieldExist[f.Name]; ok == true {
+				continue
+			}
+			if f.Kind == "varchar" && f.Size > 0 {
+				colCmdLis = append(colCmdLis, fmt.Sprintf(`ADD COLUMN "%s" %s(%d) DEFAULT '%v'`,
+					f.Name, f.Kind, f.Size, f.DefaultVal))
+			} else {
+				colCmdLis = append(colCmdLis, fmt.Sprintf(`ADD COLUMN "%s" %s DEFAULT '%v'`,
+					f.Name, f.Kind, f.DefaultVal))
+			}
 		} else {
-			colCmdLis = append(colCmdLis, fmt.Sprintf("\"%s\" %s", f.Name, f.Kind))
+			if f.Kind == "varchar" && f.Size > 0 {
+				colCmdLis = append(colCmdLis, fmt.Sprintf("\"%s\" %s(%d)", f.Name, f.Kind, f.Size))
+			} else {
+				colCmdLis = append(colCmdLis, fmt.Sprintf("\"%s\" %s", f.Name, f.Kind))
+			}
 		}
 	}
 
-	// primary key
-	if len(primaryKey) > 0 {
-		colCmdLis = append(colCmdLis, fmt.Sprintf("CONSTRAINT %s_pkey PRIMARY KEY (%s)", m.TableName, primaryKey))
+	// new or add
+	if tableExist == 1 {
+		// exist
+		//colCmd = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
+		colCmd = fmt.Sprintf("ALTER TABLE %s \n%s\n;", m.TableName, strings.Join(colCmdLis, ",\n"))
+	} else {
+		// primary key
+		if len(primaryKey) > 0 {
+			colCmdLis = append(colCmdLis, fmt.Sprintf("CONSTRAINT %s_pkey PRIMARY KEY (%s)", m.TableName, primaryKey))
+		}
+		colCmd = fmt.Sprintf("CREATE TABLE %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
 	}
-
-	// combine sql
-	colCmd := fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
 
 	//log.Debug(colCmd)
 	//println(colCmd)
-	if m.Result, err = m.DatabaseSql.DB.Exec(colCmd); err != nil {
-		log.Error("sql: ", colCmd, " error: ", err.Error())
-		return
+	if len(colCmdLis) > 0 {
+		if m.Result, err = m.DatabaseSql.DB.Exec(colCmd); err != nil {
+			log.Error("sql: ", colCmd, " error: ", err.Error())
+			return
+		}
 	}
+
 	return
 }
 

@@ -24,6 +24,7 @@ type FieldInfo struct {
 	Unique     bool
 	UniqueKeys []string
 	Size       int64
+	DefaultVal interface{}
 }
 
 // 将结构体中的字段转为map映射，供搜索用。目前只支持两层潜逃内的string
@@ -125,24 +126,31 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, m *map[string]int) (res 
 			switch fType.Type.Kind() {
 			case reflect.String:
 				info.Kind = "text"
+				info.DefaultVal = ""
 				break
 			case reflect.Int:
 				info.Kind = "integer"
+				info.DefaultVal = 0
 				break
 			case reflect.Int64:
 				info.Kind = "bigint"
+				info.DefaultVal = 0
 				break
 			case reflect.Uint:
 				info.Kind = "unit"
+				info.DefaultVal = 0
 				break
 			case reflect.Float32:
 				info.Kind = "float"
+				info.DefaultVal = 0
 				break
 			case reflect.Float64:
 				info.Kind = "float"
+				info.DefaultVal = 0
 				break
 			case reflect.Bool:
 				info.Kind = "boolean"
+				info.DefaultVal = false
 				break
 			case reflect.Struct:
 				// inherit
@@ -155,9 +163,11 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, m *map[string]int) (res 
 					if _, ok := fVal.Interface().(time.Time); ok {
 						//info.Kind = "date"
 						info.Kind = "timestamp"
+						info.DefaultVal = "0001-01-01 00:00:00+00"
 					} else {
 						// jsonb
 						info.Kind = "json"
+						info.DefaultVal = "{}"
 					}
 				}
 				break
@@ -165,8 +175,10 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, m *map[string]int) (res 
 				//info.Kind = "json"
 				if _, ok := fVal.Interface().([]byte); ok {
 					info.Kind = "bytearray"
+					info.DefaultVal = ""
 				} else {
 					info.Kind = "json"
+					info.DefaultVal = "{}"
 				}
 				break
 			default:

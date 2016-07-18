@@ -47,6 +47,9 @@ type walletFlow struct {
 	IsIncome bool    `sorm:"index" json:"isIncome"`          // true: 收入流水
 	Amount   float64 `sorm:"index" json:"amount"`            // 流水金额
 	Balance  float64 `sorm:"index" json:"balance"`           // 余额
+	//Country    string    `sorm:"index size(16)" json:"country"`  // test
+	//CountryNum float64   `sorm:"index" json:"countryNum"`        // test
+	//Birthday   time.Time `sorm:"index"`                          // test
 }
 
 func (m demoAddress) Value() (driver.Value, error) {

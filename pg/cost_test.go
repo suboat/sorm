@@ -173,6 +173,18 @@ func Test_CostConcurrency(t *testing.T) {
 		return
 	}
 
+	// 拉取流水
+	if false {
+		var wfLis = []*walletFlow{}
+		if err = modelWalletflow.Objects().All(&wfLis); err != nil {
+			t.Fatal(err)
+		}
+		for _, d := range wfLis {
+			t.Log(d.Id, d.Balance)
+		}
+		return
+	}
+
 	// 并发测试
 	cNum := 2
 	sem := make(chan bool, cNum)
@@ -289,5 +301,5 @@ func Test_CostConcurrency(t *testing.T) {
 	}
 	println("time: ", time.Now().Sub(start).Seconds())
 
-	time.Sleep(time.Second * 20)
+	time.Sleep(time.Second * 1000)
 }
