@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// 纯数字的12位ID, 前8位表示日期, 后4位表示流水号
+// 纯数字的12位ID, 前6位表示日期, 后6位表示流水号
 type Nid string
 
 const (
@@ -18,8 +18,8 @@ const (
 
 var (
 	SeedsNum = [...]string{"0", "1", "2", "3", "4", "5", "6", "7", "8", "9"}
-	NidSeed  = int(rand.New(rand.NewSource(time.Now().UnixNano())).Float64() * 10000) // 随机起始数
-	NidMux   = new(sync.Mutex)                                                        // 种子锁
+	NidSeed  = int(rand.New(rand.NewSource(time.Now().UnixNano())).Float64() * 1000000) // 随机起始数
+	NidMux   = new(sync.Mutex)                                                          // 种子锁
 )
 
 func (u Nid) String() string {
@@ -70,11 +70,12 @@ func NewNidTime() (n Nid) {
 	NidMux.Lock()
 	defer NidMux.Unlock()
 
-	if NidSeed = NidSeed + 1; NidSeed > 9999 {
+	if NidSeed = NidSeed + 1; NidSeed > 999999 {
 		NidSeed = 1
 	}
 
 	t := time.Now()
-	n = Nid(fmt.Sprintf("%d%02d%02d%04d", t.Year(), t.Month(), t.Day(), NidSeed))
+	//n = Nid(fmt.Sprintf("%d%02d%02d%04d", t.Year(), t.Month(), t.Day(), NidSeed))
+	n = Nid(fmt.Sprintf("%s%04d", t.Format("060102"), NidSeed))
 	return
 }
