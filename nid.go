@@ -76,6 +76,6 @@ func NewNidTime() (n Nid) {
 
 	t := time.Now()
 	//n = Nid(fmt.Sprintf("%d%02d%02d%04d", t.Year(), t.Month(), t.Day(), NidSeed))
-	n = Nid(fmt.Sprintf("%s%04d", t.Format("060102"), NidSeed))
+	n = Nid(fmt.Sprintf("%s%06d", t.Format("060102"), NidSeed))
 	return
 }
