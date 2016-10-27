@@ -1,6 +1,7 @@
 package orm
 
 import (
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -21,6 +22,7 @@ const (
 	TagKey       = "sorm"
 	// mean value
 	TagValNo   = `%no%`   // 不等于
+	TagValNe   = `%ne%`   // 不等于 alias
 	TagValLike = `%like%` // like
 	TagValLt   = `%lt%`   // 小于
 	TagValLte  = `%lte%`  // 小于等于
@@ -75,4 +77,11 @@ func New(s string, arg string) (db Database, err error) {
 func init() {
 	//println("orm mongo")
 	rand.Seed(time.Now().UnixNano())
+
+	// ZoneOffset on server
+	if _, offset := time.Now().Zone(); offset > 0 {
+		ZoneOffset = fmt.Sprintf("+%02d:00", offset/60/60)
+	} else {
+		ZoneOffset = fmt.Sprintf("-%02d:00", offset/60/60)
+	}
 }

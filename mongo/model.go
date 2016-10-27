@@ -4,16 +4,13 @@ import (
 	"github.com/suboat/sorm"
 
 	"gopkg.in/mgo.v2"
-	"reflect"
-	"strings"
 	"sync"
 )
 
 type model struct {
 	name string
 	sync.RWMutex
-	collection *mgo.Collection
-	objects    *objects
+	collection *mgo.Collection // mgo table
 }
 
 func (m *model) String() string {
@@ -21,13 +18,9 @@ func (m *model) String() string {
 }
 
 func (m *model) Objects() orm.Objects {
-	if m.objects == nil {
-		o := new(objects)
-		o.collection = m.collection
-		return o
-	} else {
-		return m.objects
-	}
+	ob, _ := newObject(nil)
+	ob.model = m
+	return ob
 }
 
 func (m *model) NewUid() orm.Uid {
@@ -92,77 +85,49 @@ func (m *model) EnsureIndex(indexMap orm.Index) (err error) {
 	return
 }
 
-func parseIndexTag(st interface{}, m *map[string][]string) (err error) {
-	stVal := reflect.Indirect(reflect.ValueOf(st))
-	switch stVal.Kind() {
-	case reflect.Struct:
-		stType := stVal.Type()
-		for i := 0; i < stType.NumField(); i++ {
-			fType := stType.Field(i)
-			fVal := stVal.Field(i)
-			//println("debug", fType.Name, fVal.Kind().String(), fType.Tag.Get(orm.TagKey))
-			for _, v := range strings.Split(fType.Tag.Get(orm.TagKey), ";") {
-				if len(v) > 0 {
-					n := strings.ToLower(fType.Name)
-					if _, ok := (*m)[v]; ok == false {
-						(*m)[v] = []string{}
-					}
-					(*m)[v] = append((*m)[v], n)
-				}
-			}
-			if fVal.Kind() == reflect.Struct {
-				parseIndexTag(fVal.Interface(), m)
+func (m *model) EnsureIndexWithTag(st interface{}) (err error) {
+	// index
+	var (
+		fieldInfoLis []*orm.FieldInfo
+	)
+	if fieldInfoLis, err = orm.StructModelInfo(st); err != nil {
+		return
+	}
+	for _, f := range fieldInfoLis {
+		if f.Index == false && f.Unique == false && f.IndexText == false {
+			continue
+		}
+		if f.Index == true {
+			if err = m.EnsureIndex(orm.Index{
+				"Key":      f.IndexKeys,
+				"Unique":   false,
+				"DropDups": false, // mongodb
+			}); err != nil {
+				return
 			}
 		}
-		break
-	default:
-		break
-	}
-	return
-}
-
-func (m *model) EnsureIndexWithTag(st interface{}) (err error) {
-	k := make(map[string][]string)
-	if err = parseIndexTag(st, &k); err != nil {
-		panic(err)
-	}
-	for i, f := range k {
-		switch i {
-		case "index":
-			for _, n := range f {
-				if err = m.EnsureIndex(orm.Index{
-					"Key":      []string{n},
-					"Unique":   false,
-					"DropDups": false,
-				}); err != nil {
-					return
-				}
+		if f.Unique == true {
+			if err = m.EnsureIndex(orm.Index{
+				"Key":      f.UniqueKeys,
+				"Unique":   true,
+				"DropDups": true, // mongodb:important
+			}); err != nil {
+				return
 			}
-			break
-		case "unique":
-			for _, n := range f {
+		}
+		if f.IndexText == true {
+			if len(f.IndexKeys) == 1 {
 				if err = m.EnsureIndex(orm.Index{
-					"Key":      []string{n},
-					"Unique":   true,
-					"DropDups": true, // important
-				}); err != nil {
-					return
-				}
-			}
-			break
-		case "text":
-			for _, n := range f {
-				if err = m.EnsureIndex(orm.Index{
-					"Key":              []string{"$text:" + n},
+					"Key":              []string{"$text:" + f.IndexKeys[0]},
 					"DefaultLanguage":  "en",
 					"LanguageOverride": "en",
 				}); err != nil {
 					return
 				}
+			} else {
+				err = orm.ErrIndexTextParam
+				return
 			}
-			break
-		default:
-			//println("not suport index method:", i)
 		}
 	}
 	return
@@ -170,6 +135,9 @@ func (m *model) EnsureIndexWithTag(st interface{}) (err error) {
 
 // 事务
 func (m *model) Begin() (orm.Trans, error) {
+	return nil, nil
+}
+func (m *model) BeginLevel(level string) (orm.Trans, error) {
 	return nil, nil
 }
 func (m *model) Rollback(t orm.Trans) error {
@@ -180,4 +148,9 @@ func (m *model) Commit(t orm.Trans) error {
 }
 func (m *model) AutoTrans(t orm.Trans) error {
 	return nil
+}
+
+// 兼容sql
+func (m *model) Exec(query string, args ...interface{}) (result orm.Result, err error) {
+	return
 }

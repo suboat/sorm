@@ -9,7 +9,11 @@ import (
 )
 
 var (
-	RegFieldTag = regexp.MustCompile(`(\w+)(\((\w+)\))?`)
+	RegFieldTag   = regexp.MustCompile(`(\w+)(\((\w+)\))?`)
+	RegValTypeInt = regexp.MustCompile(`^[+-]?[0-9]+$`)
+	RegValTypeNum = regexp.MustCompile(`^[+-]?([0-9]*[.])?[0-9]+$`)
+	// 2016-08-22 11:30:47.269195843 +0800 CST
+	RegValTypeTime = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:([0-9]*[.])?[0-9]+ [+-][0-9]{4}\s*([A-Z]+)?$`)
 )
 
 // 结构体中字段信息
@@ -24,10 +28,11 @@ type FieldInfo struct {
 	Unique     bool
 	UniqueKeys []string
 	Size       int64
+	IndexText  bool
 	DefaultVal interface{}
 }
 
-// 将结构体中的字段转为map映射，供搜索用。目前只支持两层潜逃内的string
+// 将结构体中的字段转为map映射，供搜索用。目前只支持两层嵌套内的string
 // TODO: 优化
 func filedToMap(st interface{}, m *map[string]interface{}, d int) (err error) {
 	stVal := reflect.Indirect(reflect.ValueOf(st))
@@ -264,6 +269,75 @@ func IsTagVal(s string) (tag string, val string) {
 	if idx := strings.Index(s[1:], `%`); idx > -1 {
 		tag = s[0 : idx+2]
 		val = s[idx+2:]
+	}
+
+	return
+}
+
+// 判断一个字符串是否含tagVal, 有则返回,将字符串转为对应的interface
+func IsTagValAuto(s string) (tag string, val interface{}) {
+	if len(s) <= 2 || s[0] != '%' {
+		return
+	}
+
+	var v string
+	if idx := strings.Index(s[1:], `%`); idx > -1 {
+		tag = s[0 : idx+2]
+		v = s[idx+2:]
+		val = v
+	}
+
+	// 需要做大小比较的情况
+	switch tag {
+	case TagValLt, TagValLte, TagValGt, TagValGte:
+		if _v, _er := PubStrconvCompval(v); _er == nil {
+			val = _v
+			return
+		}
+		break
+	default:
+		break
+	}
+
+	return
+}
+
+// 将字符串识别为可比较值
+func PubStrconvCompval(v string) (val interface{}, err error) {
+
+	val = v
+
+	// number: int
+	if RegValTypeInt.MatchString(v) == true {
+		if _int, _er := strconv.ParseInt(v, 10, 32); _er != nil {
+			err = _er
+			return
+		} else {
+			val = int(_int)
+			return
+		}
+	}
+
+	// number: float
+	if RegValTypeNum.MatchString(v) == true {
+		if _fl, _er := strconv.ParseFloat(v, 64); _er != nil {
+			err = _er
+			return
+		} else {
+			val = _fl
+			return
+		}
+	}
+
+	// date
+	if RegValTypeTime.MatchString(v) == true {
+		if _ti, _er := PubTimeStrParse(v); _er != nil {
+			err = _er
+			return
+		} else {
+			val = _ti
+			return
+		}
 	}
 
 	return

@@ -2,25 +2,26 @@ package mongo
 
 import (
 	"github.com/suboat/sorm"
+	"github.com/suboat/sorm/log"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 	"reflect"
 )
 
 type objects struct {
-	collection *mgo.Collection // mgo table
-	query      *mgo.Query      // query handler
-	skip       int             //
-	limit      int             //
-	total      int             // 搜索结果总数
-	m          bson.M          // 缓存搜索条件
-	count      int             // 缓存搜索结果
+	model *model     // model
+	query *mgo.Query // query handler
+	skip  int        //
+	limit int        //
+	total int        // 搜索结果总数
+	m     bson.M     // 缓存搜索条件
+	count int        // 缓存搜索结果, -1 为未使用
 }
 
 // query检查
 func (o *objects) queryCheck() {
 	if o.query == nil {
-		o.query = o.collection.Find(nil)
+		o.query = o.model.collection.Find(nil)
 	}
 }
 
@@ -32,7 +33,7 @@ func (o *objects) countCheck() {
 // 保存至
 func (o *objects) All(result interface{}) error {
 	if o.query == nil {
-		o.query = o.collection.Find(nil)
+		o.query = o.model.collection.Find(nil)
 		if n, err := o.Count(); err == nil {
 			o.total = n
 		}
@@ -58,7 +59,7 @@ func (o *objects) One(result interface{}) (err error) {
 func (o *objects) Count() (int, error) {
 	var err error
 	if o.query == nil {
-		o.count, err = o.collection.Count()
+		o.count, err = o.model.collection.Count()
 		o.total = o.count
 		return o.count, err
 	} else {
@@ -151,11 +152,13 @@ func preFilter(t orm.M) (ret bson.M) {
 
 // 搜索
 func (o *objects) Filter(t orm.M) orm.Objects {
-	o.m = preFilter(t)
-	o.query = o.collection.Find(o.m)
+	//o.m = preFilter(t)
+	o.m = ParserMMust(t)
+	o.query = o.model.collection.Find(o.m)
 	if n, err := o.Count(); err == nil {
 		o.total = n
 	}
+	log.Debug(o.m, " count:", o.total)
 	return o
 }
 
@@ -192,7 +195,7 @@ func (o *objects) Limit(n int) orm.Objects {
 // 跳过
 func (o *objects) Skip(n int) orm.Objects {
 	if o.query == nil {
-		o.query = o.collection.Find(nil)
+		o.query = o.model.collection.Find(nil)
 	}
 	o.query = o.query.Skip(n)
 	o.skip = n
@@ -204,16 +207,16 @@ func (o *objects) Delete() (err error) {
 	if o.count == 0 {
 		err = orm.ErrDeleteObjectEmpty
 	} else if o.count == 1 {
-		err = o.collection.Remove(o.m) // 删除一个记录
+		err = o.model.collection.Remove(o.m) // 删除一个记录
 	} else {
-		_, err = o.collection.RemoveAll(o.m) // 删除所有匹配记录
+		_, err = o.model.collection.RemoveAll(o.m) // 删除所有匹配记录
 	}
 	return
 }
 
 // 插入记录
 func (o *objects) Create(i interface{}) (err error) {
-	err = o.collection.Insert(i)
+	err = o.model.collection.Insert(i)
 	return
 }
 
@@ -223,10 +226,16 @@ func (o *objects) Update(i interface{}) (err error) {
 	if o.count == 0 {
 		err = orm.ErrUpdateObjectEmpty
 	} else if o.count == 1 {
-		err = o.collection.Update(o.m, i) // 更新一个记录
+		if _, _ok := i.(map[string]interface{}); _ok == true {
+			// map参数类型,更新特定值
+			err = o.model.collection.Update(o.m, bson.M{"$set": i})
+		} else {
+			// 覆盖更新
+			err = o.model.collection.Update(o.m, i)
+		}
 	} else {
 		// multi update only works with $ operators
-		_, err = o.collection.UpdateAll(o.m, bson.M{"$set": i}) // 更新所有匹配记录
+		_, err = o.model.collection.UpdateAll(o.m, bson.M{"$set": i}) // 更新所有匹配记录
 	}
 	return
 }
@@ -237,7 +246,13 @@ func (o *objects) UpdateOne(i interface{}) (err error) {
 	if o.count == 0 {
 		err = orm.ErrUpdateObjectEmpty
 	} else if o.count == 1 {
-		err = o.collection.Update(o.m, i) // 更新一个记录
+		if _, _ok := i.(map[string]interface{}); _ok == true {
+			// map参数类型,更新特定值
+			err = o.model.collection.Update(o.m, bson.M{"$set": i})
+		} else {
+			// 覆盖更新
+			err = o.model.collection.Update(o.m, i)
+		}
 	} else {
 		err = orm.ErrUpdateOneObjectMult
 	}
@@ -256,4 +271,36 @@ func (o *objects) TUpdate(i interface{}, t orm.Trans) (err error) {
 }
 func (o *objects) TUpdateOne(i interface{}, t orm.Trans) (err error) {
 	return o.UpdateOne(i)
+}
+
+// 兼容
+func (o *objects) TAll(i interface{}, t orm.Trans) (err error) {
+	return o.All(i)
+}
+func (o *objects) TOne(result interface{}, t orm.Trans) (err error) {
+	return o.One(result)
+}
+func (o *objects) TCount(t orm.Trans) (n int, err error) {
+	return o.Count()
+}
+func (o *objects) TLockUpdate(t orm.Trans) (err error) {
+	return
+}
+
+// sql 兼容
+func (o *objects) GetResult() (r orm.Result, err error) {
+	return
+}
+
+// new
+func newObject(s *objects) (d *objects, err error) {
+	if s != nil {
+		d = s
+	} else {
+		d = &objects{
+			count: -1,
+		}
+	}
+	// default
+	return
 }

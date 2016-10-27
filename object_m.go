@@ -107,7 +107,7 @@ func parserSql(k string, v interface{}, idx int) (sql string, val interface{}, e
 			sql = fmt.Sprintf("%s >= $%d", k, idx)
 			val = _val
 			break
-		case TagValNo:
+		case TagValNo, TagValNe:
 			sql = fmt.Sprintf("%s != $%d", k, idx)
 			val = _val
 		default:

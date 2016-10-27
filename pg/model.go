@@ -6,6 +6,7 @@ import (
 
 	"database/sql"
 	"fmt"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -289,6 +290,23 @@ func (m *Model) Begin() (orm.Trans, error) {
 	)
 	if t.Tx, err = m.DatabaseSql.DB.Beginx(); err != nil {
 		return t, err
+	}
+
+	// 记录调用处
+	if pc, file, line, ok := runtime.Caller(2); ok {
+		// func
+		_fnName := runtime.FuncForPC(pc).Name()
+		_fnNameLis := strings.Split(_fnName, ".")
+		_fnNameSrc := strings.Split(_fnName, "/")[0]
+		fnName := _fnNameLis[len(_fnNameLis)-1]
+
+		// file
+		_pcLis := strings.Split(file, _fnNameSrc)
+		filePath := _fnNameSrc + strings.Join(_pcLis[1:], "")
+
+		t.DebugPush(fmt.Sprintf("%s:%d|%s", filePath, line, fnName))
+	} else {
+		t.DebugPush("can not alloc call path")
 	}
 
 	// 超时回滚

@@ -7,10 +7,6 @@ import (
 	"gopkg.in/mgo.v2"
 )
 
-func init() {
-	orm.RegisterHash(orm.Mongo, New)
-}
-
 type db struct {
 	session *mgo.Session  // mongo session
 	db      *mgo.Database // 数据库
@@ -67,16 +63,27 @@ func parserArg(s string) (a *db, err error) {
 	// 解析json参数
 	arg := map[string]string{}
 	json.Unmarshal([]byte(s), &arg)
+	// 兼容sql的参数读取
 	a.url = arg["url"]
+	if len(a.url) == 0 {
+		a.url = arg["host"]
+	}
 	a.dbName = arg["db"]
+	if len(a.dbName) == 0 {
+		a.dbName = arg["dbname"]
+	}
 	return
 }
 
-func New(arg string) (orm.Database, error) {
+func NewDb(arg string) (orm.Database, error) {
 	d, err := parserArg(arg)
 	// 数据库初始化
 	if err == nil {
 		err = d.reset()
 	}
 	return d, err
+}
+
+func init() {
+	orm.RegisterHash(orm.Mongo, NewDb)
 }
