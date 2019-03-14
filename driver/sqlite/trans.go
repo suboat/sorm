@@ -1,8 +1,8 @@
 package sqlite
 
 import (
-	"github.com/suboat/sorm"
 	"github.com/jmoiron/sqlx"
+	"github.com/suboat/sorm"
 
 	"database/sql"
 	"strings"

@@ -1,10 +1,10 @@
 package sqlite
 
 import (
+	"github.com/jmoiron/sqlx"
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/log"
 	"github.com/suboat/sorm/songo"
-	"github.com/jmoiron/sqlx"
 
 	_ "github.com/mattn/go-sqlite3" // 驱动
 

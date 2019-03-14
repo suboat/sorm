@@ -1,10 +1,10 @@
 package mysql
 
 import (
-	"github.com/suboat/sorm/log"
-	"github.com/suboat/sorm/songo"
 	"github.com/jmoiron/sqlx"
 	"github.com/suboat/sorm"
+	"github.com/suboat/sorm/log"
+	"github.com/suboat/sorm/songo"
 
 	_ "github.com/go-sql-driver/mysql" // 驱动包
 
