@@ -1,0 +1,29 @@
+style: gitlab
+template: CHANGELOG.tpl.md
+info:
+  title: CHANGELOG
+  repository_url: https://github.com/suboat/sorm
+options:
+  commits:
+    filters:
+      Type:
+        - feat
+        - fix
+        - perf
+        - refactor
+  commit_groups:
+      title_maps:
+        feat: Features
+        fix: Fix
+        perf: Performance improve
+        refactor: Refactor
+      sort_by: Scope
+  header:
+    pattern: "^(\\w*)(?:\\(([\\w\\$\\.\\-\\*\\s]*)\\))?\\:\\s(.*)$"
+    pattern_maps:
+      - Type
+      - Scope
+      - Subject
+  notes:
+    keywords:
+      - BREAKING CHANGE
