@@ -5,3 +5,5 @@ Simple ORM in Go
 ## Documentation
 
 * [中文文档](https://suboat.github.io/sorm/#/zh-cn/)
+
+* [Songo查询方案](https://github.com/suboat/songo/)
