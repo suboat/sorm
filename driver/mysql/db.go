@@ -52,7 +52,7 @@ func (db *DatabaseSQL) String() string {
 	return db.DB.DriverName()
 }
 
-// Version 打印数据库及版本号
+// DriverName 数据库驱动名称
 func (db *DatabaseSQL) DriverName() string {
 	return db.DB.DriverName()
 }

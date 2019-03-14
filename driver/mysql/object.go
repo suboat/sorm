@@ -1,8 +1,8 @@
 package mysql
 
 import (
-	"github.com/suboat/sorm/log"
 	"github.com/suboat/sorm"
+	"github.com/suboat/sorm/log"
 
 	"database/sql"
 	"encoding/json"

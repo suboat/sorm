@@ -1,8 +1,8 @@
 package mysql
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/suboat/sorm"
+	"github.com/jmoiron/sqlx"
 
 	"database/sql"
 	"strings"
