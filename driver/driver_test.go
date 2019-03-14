@@ -7,7 +7,7 @@ import (
 	_ "github.com/suboat/sorm/driver/mongo"
 	_ "github.com/suboat/sorm/driver/mysql"
 	_ "github.com/suboat/sorm/driver/pg"
-	//_ "github.com/suboat/sorm/driver/sqlite"
+	_ "github.com/suboat/sorm/driver/sqlite"
 
 	"fmt"
 	"os"
@@ -36,9 +36,9 @@ func testGetDir() string {
 func testGetDB() orm.Database {
 	if len(TestName) == 0 {
 		//TestName = orm.DriverNamePostgres
-		TestName = orm.DriverNameMysql
+		//TestName = orm.DriverNameMysql
 		//TestName = orm.DriverNameSQLite
-		//TestName = orm.DriverNameMongo
+		TestName = orm.DriverNameMongo
 	}
 	if testDB != nil {
 		return testDB
