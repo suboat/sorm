@@ -10,7 +10,7 @@ import (
 	"sync"
 )
 
-// Model
+// Model model
 type Model struct {
 	sync.RWMutex
 	//
@@ -81,6 +81,7 @@ func (m *Model) Drop() (err error) {
 	return
 }
 
+// EnsureIndex 确保索引存在
 func (m *Model) EnsureIndex(indexMap orm.Index) (err error) {
 	// default attr
 	index := mgo.Index{
@@ -91,37 +92,37 @@ func (m *Model) EnsureIndex(indexMap orm.Index) (err error) {
 		Sparse:     true,
 	}
 	// keys
-	if i, ok := indexMap["Key"]; ok == true {
+	if i, ok := indexMap["Key"]; ok {
 		if v, ok := i.([]string); ok {
 			index.Key = v
 		}
 	}
 	// unique
-	if i, ok := indexMap["Unique"]; ok == true {
+	if i, ok := indexMap["Unique"]; ok {
 		if v, ok := i.(bool); ok {
 			index.Unique = v
 		}
 	}
 	// DropDups
-	if i, ok := indexMap["DropDups"]; ok == true {
+	if i, ok := indexMap["DropDups"]; ok {
 		if v, ok := i.(bool); ok {
 			index.DropDups = v
 		}
 	}
 	// DefaultLanguage
-	if i, ok := indexMap["DefaultLanguage"]; ok == true {
+	if i, ok := indexMap["DefaultLanguage"]; ok {
 		if v, ok := i.(string); ok {
 			index.DefaultLanguage = v
 		}
 	}
 	// LanguageOverride
-	if i, ok := indexMap["LanguageOverride"]; ok == true {
+	if i, ok := indexMap["LanguageOverride"]; ok {
 		if v, ok := i.(string); ok {
 			index.LanguageOverride = v
 		}
 	}
 	// Sparse
-	if i, ok := indexMap["Sparse"]; ok == true {
+	if i, ok := indexMap["Sparse"]; ok {
 		if v, ok := i.(bool); ok {
 			index.Sparse = v
 		}
@@ -130,10 +131,12 @@ func (m *Model) EnsureIndex(indexMap orm.Index) (err error) {
 	return
 }
 
+// EnsureColumn 确认字段
 func (m *Model) EnsureColumn(st interface{}) (err error) {
 	return m.Ensure(st)
 }
 
+// Ensure is sync table with struct
 func (m *Model) Ensure(st interface{}) (err error) {
 	// index
 	var (
@@ -143,10 +146,10 @@ func (m *Model) Ensure(st interface{}) (err error) {
 		return
 	}
 	for _, f := range fieldInfoLis {
-		if f.Index == false && f.Unique == false && f.IndexText == false && f.Primary == false {
+		if !f.Index && !f.Unique && !f.IndexText && !f.Primary {
 			continue
 		}
-		if f.Index == true {
+		if f.Index {
 			if err = m.EnsureIndex(orm.Index{
 				"Key":      f.IndexKeys,
 				"Unique":   false,
@@ -155,7 +158,7 @@ func (m *Model) Ensure(st interface{}) (err error) {
 				return
 			}
 		}
-		if f.Unique == true {
+		if f.Unique {
 			if err = m.EnsureIndex(orm.Index{
 				"Key":      f.UniqueKeys,
 				"Unique":   true,
@@ -165,7 +168,7 @@ func (m *Model) Ensure(st interface{}) (err error) {
 			}
 		}
 		// fallback to unique
-		if f.Primary == true && f.Serial == false && f.Name != "id" {
+		if f.Primary && !f.Serial && f.Name != "id" {
 			if err = m.EnsureIndex(orm.Index{
 				"Key":      f.PrimaryKeys,
 				"Unique":   true,
@@ -174,7 +177,7 @@ func (m *Model) Ensure(st interface{}) (err error) {
 				return
 			}
 		}
-		if f.IndexText == true {
+		if f.IndexText {
 			if len(f.IndexKeys) == 1 {
 				if err = m.EnsureIndex(orm.Index{
 					"Key":              []string{"$text:" + f.IndexKeys[0]},
@@ -199,27 +202,32 @@ func (m *Model) Begin() (orm.Trans, error) {
 
 // BeginWith 事务
 func (m *Model) BeginWith(arg *orm.ArgTrans) (ret orm.Trans, err error) {
-	if CfgTxUnsafe == true {
+	if CfgTxUnsafe {
 		return &Trans{}, nil
 	} else {
 		return nil, orm.ErrTransNotSupport
 	}
 }
 
+// Rollback 事务回滚
 func (m *Model) Rollback(t orm.Trans) error {
-	if CfgTxUnsafe == true {
+	if CfgTxUnsafe {
 		return t.Rollback()
 	} else {
 		return orm.ErrTransNotSupport
 	}
 }
+
+// Commit 事务提交
 func (m *Model) Commit(t orm.Trans) error {
-	if CfgTxUnsafe == true {
+	if CfgTxUnsafe {
 		return t.Commit()
 	} else {
 		return orm.ErrTransNotSupport
 	}
 }
+
+// AutoTrans 自动处理事务
 func (m *Model) AutoTrans(t orm.Trans) (err error) {
 	if t == nil {
 		err = orm.ErrTransEmpty
@@ -235,7 +243,7 @@ func (m *Model) AutoTrans(t orm.Trans) (err error) {
 	return
 }
 
-// 兼容sql
+// Exec 兼容sql
 func (m *Model) Exec(query string, args ...interface{}) (result orm.Result, err error) {
 	return
 }

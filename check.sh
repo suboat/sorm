@@ -1,6 +1,6 @@
 #!/bin/bash
 BEGIN_DIR=$PWD
-for dirName in "." "log" "types" "driver" "songo" "driver/pg" "driver/mysql" "driver/sqlite"; do
+for dirName in "." "log" "types" "driver" "songo" "driver/pg" "driver/mysql" "driver/sqlite" "driver/mongo"; do
   echo checking... ${dirName}
   cd ${BEGIN_DIR}/${dirName}
   # code fmt

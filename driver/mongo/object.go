@@ -13,6 +13,7 @@ import (
 	"strings"
 )
 
+// Objects
 type Objects struct {
 	Model *Model     // model
 	query *mgo.Query // query handler
@@ -40,7 +41,7 @@ func (o *Objects) queryCheck() {
 	}
 }
 
-// 数目检查
+// countCheck 数目检查
 func (o *Objects) countCheck() {
 	if o.err != nil {
 		return
@@ -54,7 +55,7 @@ func (o *Objects) countCheck() {
 	}
 }
 
-// 保存至
+// All all
 func (o *Objects) All(result interface{}) (err error) {
 	if o.err != nil {
 		return o.err
@@ -73,7 +74,7 @@ func (o *Objects) All(result interface{}) (err error) {
 	return
 }
 
-// 保存一条记录至
+// One 保存一条记录至
 func (o *Objects) One(result interface{}) (err error) {
 	if o.err != nil {
 		err = o.err
@@ -92,7 +93,7 @@ func (o *Objects) One(result interface{}) (err error) {
 	return err
 }
 
-// 总数
+// Count 总数
 func (o *Objects) Count() (n int, err error) {
 	o.count = -1
 	o.countCheck()
@@ -109,7 +110,7 @@ func (o *Objects) Count() (n int, err error) {
 	//}
 }
 
-// 搜索
+// Filter 搜索
 func (o *Objects) Filter(t orm.M) orm.Objects {
 	o.queryM = t // cache
 	if m, err := orm.HookParseMgo(t); err != nil {
@@ -123,19 +124,19 @@ func (o *Objects) Filter(t orm.M) orm.Objects {
 	return o
 }
 
-// 排序 小写
+// Sort 排序 小写
 func (o *Objects) Sort(fields ...string) orm.Objects {
-	fields_ := []string{}
+	_fields := []string{}
 	for _, _s := range fields {
-		fields_ = append(fields_, strings.ToLower(_s))
+		_fields = append(_fields, strings.ToLower(_s))
 	}
 	o.queryCheck()
-	o.query = o.query.Sort(fields_...)
+	o.query = o.query.Sort(_fields...)
 	o.sorts = fields
 	return o
 }
 
-// 摘要
+// Meta 摘要
 func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	if ob.err != nil {
 		err = ob.err
@@ -166,7 +167,7 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	return
 }
 
-// 限制
+// Limit 限制
 func (o *Objects) Limit(n int) orm.Objects {
 	o.queryCheck()
 	o.query = o.query.Limit(n)
@@ -174,7 +175,7 @@ func (o *Objects) Limit(n int) orm.Objects {
 	return o
 }
 
-// 跳过
+// Skip 跳过
 func (o *Objects) Skip(n int) orm.Objects {
 	o.queryCheck()
 	o.query = o.query.Skip(n)
@@ -182,7 +183,7 @@ func (o *Objects) Skip(n int) orm.Objects {
 	return o
 }
 
-// 删除
+// Delete 删除
 func (o *Objects) Delete() (err error) {
 	o.countCheck()
 	if o.count == 0 {
@@ -195,7 +196,7 @@ func (o *Objects) Delete() (err error) {
 	return
 }
 
-// 删除一条记录
+// DeleteOne 删除一条记录
 func (ob *Objects) DeleteOne() (err error) {
 	ob.countCheck()
 	if ob.count == 0 {
@@ -208,13 +209,13 @@ func (ob *Objects) DeleteOne() (err error) {
 	return
 }
 
-// 插入记录
+// Create 插入记录
 func (o *Objects) Create(i interface{}) (err error) {
 	err = o.Model.Collection.Insert(i)
 	return
 }
 
-// 更新记录
+// Update 更新记录
 func (o *Objects) Update(i interface{}) (err error) {
 	o.countCheck()
 	if o.count == 0 {
@@ -227,9 +228,9 @@ func (o *Objects) Update(i interface{}) (err error) {
 				return
 			}
 			// 特殊操作处理
-			if _, ok := val["$set"]; ok == true {
+			if _, ok := val["$set"]; ok {
 				err = o.Model.Collection.Update(o.m, bson.M(val))
-			} else if _, ok := val["$inc"]; ok == true {
+			} else if _, ok := val["$inc"]; ok {
 				err = o.Model.Collection.Update(o.m, bson.M(val))
 			} else {
 				err = o.Model.Collection.Update(o.m, bson.M{"$set": val})
@@ -245,7 +246,7 @@ func (o *Objects) Update(i interface{}) (err error) {
 	return
 }
 
-// 更新记录, 1条
+// UpdateOne 更新记录, 1条
 func (o *Objects) UpdateOne(i interface{}) (err error) {
 	o.countCheck()
 	if o.count == 0 {
@@ -258,9 +259,9 @@ func (o *Objects) UpdateOne(i interface{}) (err error) {
 				return
 			}
 			// 特殊操作处理
-			if _, ok := val["$set"]; ok == true {
+			if _, ok := val["$set"]; ok {
 				err = o.Model.Collection.Update(o.m, bson.M(val))
-			} else if _, ok := val["$inc"]; ok == true {
+			} else if _, ok := val["$inc"]; ok {
 				err = o.Model.Collection.Update(o.m, bson.M(val))
 			} else {
 				err = o.Model.Collection.Update(o.m, bson.M{"$set": val})
@@ -275,65 +276,81 @@ func (o *Objects) UpdateOne(i interface{}) (err error) {
 	return
 }
 
-// 事务操作
+/*事务操作*/
+
+// TDelete 事务中删除
 func (o *Objects) TDelete(t orm.Trans) (err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		err = o.Delete()
 	}
 	return
 }
+
+// TCreate 事务中创建
 func (o *Objects) TCreate(i interface{}, t orm.Trans) (err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		err = o.Create(i)
 	}
 	return
 }
+
+// TUpdate 事务中更新
 func (o *Objects) TUpdate(i interface{}, t orm.Trans) (err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		err = o.Update(i)
 	}
 	return
 }
+
+// TUpdateOne 事务中更新
 func (o *Objects) TUpdateOne(i interface{}, t orm.Trans) (err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		err = o.UpdateOne(i)
 	}
 	return
 }
+
+// TAll 在事务中获取
 func (o *Objects) TAll(i interface{}, t orm.Trans) (err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		err = o.All(i)
 	}
 	return
 }
+
+// TOne fetch one to (in tx)
 func (o *Objects) TOne(i interface{}, t orm.Trans) (err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		err = o.One(i)
 	}
 	return
 }
+
+// TCount is Count in transaction
 func (o *Objects) TCount(t orm.Trans) (n int, err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		n, err = o.Count()
 	}
 	return
 }
+
+// TDeleteOne 事务中删除
 func (o *Objects) TDeleteOne(t orm.Trans) (err error) {
-	if CfgTxUnsafe == false {
+	if !CfgTxUnsafe {
 		err = orm.ErrTransNotSupport
 	} else {
 		err = o.DeleteOne()
@@ -341,12 +358,12 @@ func (o *Objects) TDeleteOne(t orm.Trans) (err error) {
 	return
 }
 
-// 兼容
+// TLockUpdate 兼容
 func (o *Objects) TLockUpdate(t orm.Trans) (err error) {
 	return
 }
 
-// sql 兼容
+// GetResult sql 兼容
 func (o *Objects) GetResult() (r orm.Result, err error) {
 	return
 }
