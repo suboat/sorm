@@ -1,6 +1,6 @@
 # Simple ORM in Go. [![GoDoc](http://godoc.org/github.com/suboat/sorm?status.svg)](http://godoc.org/github.com/suboat/sorm)
 
-Of all the famous database technical we get features which popular and powerful can be abstract to a common library.
+The features of the famous, popular and powerful technical databases that we usually use can be abstracted to a common library.
 
 ## Links
 
