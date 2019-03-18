@@ -108,6 +108,9 @@ func (db *DatabaseSQL) ModelWith(s string, arg *orm.ArgModel) orm.Model {
 	if m.log == nil {
 		m.log = log.Log.Copy()
 	}
+	if arg != nil && arg.LogLevel > 0 && m.log != nil {
+		m.log.SetLevel(arg.LogLevel)
+	}
 	return m
 }
 
