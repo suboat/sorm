@@ -123,7 +123,9 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 			ob.nums = ob.count
 		} else {
 			if ob.count > ob.limit {
-				ob.nums = ob.limit
+				if ob.nums = ob.count - ob.skip; ob.nums > ob.limit {
+					ob.nums = ob.limit
+				}
 			} else if ob.nums > ob.count && ob.count > -1 {
 				ob.nums = ob.count
 			}
