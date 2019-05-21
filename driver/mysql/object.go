@@ -198,6 +198,15 @@ func (ob *Objects) all(ex execer, result interface{}) (err error) {
 		}
 	} else {
 		// select query
+		// mysql: change time string with timezone to UTC string
+		for i, d := range ob.cacheQueryValues {
+			switch _v := d.(type) {
+			case string:
+				ob.cacheQueryValues[i] = PubTimeConvert(_v)
+			default:
+				break
+			}
+		}
 		_sql = fmt.Sprintf("SELECT * FROM `%s` WHERE %s %s %s",
 			ob.Model.TableName, ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
 		if err = ex.Select(result, _sql, ob.cacheQueryValues...); err != nil {
