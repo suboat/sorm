@@ -296,7 +296,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 	if tableExist == 1 {
 		// exist
 		//colCmd = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
-		colCmd = fmt.Sprintf("ALTER TABLE `%s` \n%s\n;", m.TableName, strings.Join(colCmdLis, ",\n"))
+		//colCmd = fmt.Sprintf("ALTER TABLE `%s` \n%s\n;", m.TableName, strings.Join(colCmdLis, ",\n"))
 	} else {
 		// primary key
 		if len(primaryCmd) > 0 {
@@ -310,10 +310,22 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 
 	// exec
 	if len(colCmdLis) > 0 {
-		if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
-			m.log.Errorf(`[ensure-column] 
+		if tableExist == 1 {
+			// 因为tidb的alter不支持一次性进行多个字段的新增,所以要分逐个执行
+			for _, _d := range colCmdLis {
+				_colCmd := fmt.Sprintf("ALTER TABLE `%s` %s;\n", m.TableName, _d)
+				if m.Result, err = m.DatabaseSQL.DB.Exec(_colCmd); err != nil {
+					m.log.Errorf(`[ensure-column] 
 %s err: %v`, colCmd, err)
-			return
+					return
+				}
+			}
+		} else {
+			if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
+				m.log.Errorf(`[ensure-column] 
+%s err: %v`, colCmd, err)
+				return
+			}
 		}
 		// log
 		m.log.Infof(`[ensure-column] 
