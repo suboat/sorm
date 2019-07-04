@@ -137,7 +137,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 	)
 	// table exist
 	if err = m.DatabaseSQL.DB.Get(&tableExist,
-		`SELECT count(*) FROM information_schema.tables WHERE table_name=?`, m.TableName); err != nil {
+		`SELECT count(*) FROM information_schema.tables WHERE table_name=? AND table_schema=?`, m.TableName, m.DatabaseSQL.ArgConn.Database); err != nil {
 		m.log.Errorf("[ensure-column] check table exist err: %v", err)
 		return
 	}
@@ -145,7 +145,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		// test column
 		var columnLis []string
 		if err = m.DatabaseSQL.DB.Select(&columnLis,
-			`SELECT column_name FROM information_schema.columns WHERE table_name=?`, m.TableName); err != nil {
+			`SELECT column_name FROM information_schema.columns WHERE table_name=? AND table_schema=?`, m.TableName, m.DatabaseSQL.ArgConn.Database); err != nil {
 			m.log.Errorf("[ensure-column] select column err: %v", err)
 			return
 		}
