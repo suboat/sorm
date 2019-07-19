@@ -245,6 +245,13 @@ func (m *Model) AutoTrans(t orm.Trans) (err error) {
 
 // Exec 兼容sql
 func (m *Model) Exec(query string, args ...interface{}) (result orm.Result, err error) {
+	err = orm.ErrNotImplementMethod
+	return
+}
+
+// Select 兼容sql
+func (m *Model) Select(dest interface{}, query string, args ...interface{}) (err error) {
+	err = orm.ErrNotImplementMethod
 	return
 }
 

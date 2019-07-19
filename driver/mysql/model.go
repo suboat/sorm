@@ -651,6 +651,12 @@ func (m *Model) Exec(query string, args ...interface{}) (result orm.Result, err 
 	return
 }
 
+// Exec 执行语句
+func (m *Model) Select(dest interface{}, query string, args ...interface{}) (err error) {
+	err = m.DatabaseSQL.DB.Select(dest, query, args...)
+	return
+}
+
 // With 设置日志级别
 func (m *Model) With(arg *orm.ArgModel) (ret orm.Model) {
 	r := m.Copy()

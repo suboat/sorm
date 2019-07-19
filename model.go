@@ -51,6 +51,7 @@ type Model interface {
 
 	// 直接执行数据库语句
 	Exec(query string, args ...interface{}) (result Result, err error)
+	Select(dest interface{}, query string, args ...interface{}) (err error)
 	// 删表
 	Drop() error
 

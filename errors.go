@@ -13,6 +13,8 @@ var (
 	ErrHookFuncUndefined error = errors.New("hook function undefined") // 函数未定义
 	// sync
 	ErrSyncEmbedPointNil error = errors.New("sync embed field ponitor nil") // 内嵌指针结构未初始化
+	// model:exec/select
+	ErrNotImplementMethod error = errors.New("method is not implemented") // 方法未实现
 	// model:trans
 	ErrTransNotSupport        error = errors.New("driver not support trans")                // 驱动不支持事物: 如mongodb
 	ErrTransNotSupportMethod  error = errors.New("driver not support this method of trans") // 驱动不支持事物: 如mongodb
