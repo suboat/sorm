@@ -46,9 +46,14 @@ func IsAccessionValid(s string) (err error) {
 	return
 }
 
-// NewAccession 新建acc
+// NewAccession 创建16字节内涵的uuid
 func NewAccession() string {
 	return NewUUID()
+}
+
+// NewAccession12: 创建12字节内涵的uuid
+func NewAccession12() string {
+	return "00000000" + NewUUID()[8:]
 }
 
 // ** serial / nid

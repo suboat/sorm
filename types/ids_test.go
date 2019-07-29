@@ -1,6 +1,13 @@
 package types
 
 import (
+	"github.com/stretchr/testify/require"
+
+	"encoding/base64"
+	"encoding/hex"
+	"fmt"
+	"strings"
+
 	"testing"
 )
 
@@ -11,6 +18,26 @@ func Test_Accession(t *testing.T) {
 		t.Fatal(err)
 	} else {
 		t.Logf("accession: %s, len: %d", s, len(s))
+	}
+}
+
+//
+func Test_Accession12(t *testing.T) {
+	as := require.New(t)
+	for i := 0; i < 300000; i++ {
+		id := NewAccession12()
+		id = strings.Replace(id, "-", "", -1)
+		as.Equal("00000000", id[0:8])
+		b, _ := hex.DecodeString(id[8:])
+		c := base64.RawURLEncoding.EncodeToString(b)
+		b2, _ := base64.RawURLEncoding.DecodeString(c)
+		id2 := fmt.Sprintf("00000000%x", b2)
+		// debug
+		//t.Logf("%s b:%d c:%d %s %s", c, len(b), len(c), id, id2)
+		// assert
+		as.Equal(id2, id)
+		as.Equal(true, len(b) <= 12)
+		as.Equal(true, len(c) <= 16)
 	}
 }
 
