@@ -4,9 +4,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"strings"
+	"time"
 
 	"testing"
 )
@@ -38,6 +40,24 @@ func Test_Accession12(t *testing.T) {
 		as.Equal(id2, id)
 		as.Equal(true, len(b) <= 12)
 		as.Equal(true, len(c) <= 16)
+	}
+}
+
+//
+func Test_NewUnix(t *testing.T) {
+	as := require.New(t)
+	for i := 0; i < 300000; i++ {
+		id := NewUnix()
+		t1 := uint64(time.Now().Unix())
+		b, _ := hex.DecodeString(strings.Replace(id, "-", "", -1))
+		b2 := make([]byte, 8)
+		b2[4] = b[0]
+		b2[5] = b[1]
+		b2[6] = b[2]
+		b2[7] = b[3]
+		t2 := uint64(binary.BigEndian.Uint64(b2))
+		//t.Logf("%s %d %d", id, t1, t2)
+		as.Equal(true, t2-t1 <= 1)
 	}
 }
 
