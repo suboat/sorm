@@ -12,7 +12,7 @@ func NewUUID() (ret string) {
 	return uuid.NewV4().String()
 }
 
-// NewUnix 后4字节为时间戳的uuid
+// NewUnix 前4字节为时间戳的uuid
 func NewUnix() (ret string) {
 	d := uuid.NewV4()
 	b := make([]byte, 8)
