@@ -26,7 +26,7 @@ func TestNew(t *testing.T) {
 
 //
 func TestSetLogLevel(t *testing.T) {
-	var a uint32 = 10
+	var a = 10
 	SetLogLevel(a)
 }
 func Test_Other(t *testing.T) {

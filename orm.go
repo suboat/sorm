@@ -48,7 +48,7 @@ const (
 const (
 	// LevelPanic level, highest level of severity. Logs and then calls panic with the
 	// message passed to Debug, Info, ...
-	LevelPanic uint32 = iota
+	LevelPanic int = iota
 	// LevelFatal level. Logs and then calls `os.Exit(1)`. It will exit even if the
 	// logging level is set to Panic.
 	LevelFatal
@@ -62,6 +62,8 @@ const (
 	LevelInfo
 	// LevelDebug level. Usually only enabled when debugging. Very verbose logging.
 	LevelDebug
+	// TraceLevel level. Designates finer-grained informational events than the Debug.
+	TraceLevel
 )
 
 // default
@@ -101,30 +103,38 @@ type Meta struct {
 
 // Logger 日志输出
 type Logger interface {
-	SetLevel(level uint32)
-	GetLevel() uint32
 	//
 	Debug(args ...interface{})
 	Debugf(format string, args ...interface{})
 	Debugln(args ...interface{})
+	//
 	Info(args ...interface{})
 	Infof(format string, args ...interface{})
 	Infoln(args ...interface{})
+	//
 	Warn(args ...interface{})
 	Warnf(format string, args ...interface{})
 	Warnln(args ...interface{})
+	//
 	Error(args ...interface{})
 	Errorf(format string, args ...interface{})
 	Errorln(args ...interface{})
-	Print(args ...interface{})
-	Printf(format string, args ...interface{})
-	Println(args ...interface{})
-	Fatal(args ...interface{})
-	Fatalf(format string, args ...interface{})
-	Fatalln(args ...interface{})
+	//
 	Panic(args ...interface{})
 	Panicf(format string, args ...interface{})
 	Panicln(args ...interface{})
+	//
+	Print(args ...interface{})
+	Printf(format string, args ...interface{})
+	Println(args ...interface{})
+	//
+	Fatal(args ...interface{})
+	Fatalf(format string, args ...interface{})
+	Fatalln(args ...interface{})
+	//
+	SetLevel(level int)
+	GetLevel() int
+	Output(calldepth int, s string) error
 }
 
 // RegisterDriver registers a function that returns a new instance of the given
@@ -141,7 +151,7 @@ func SetLog(log Logger) {
 }
 
 // SetLogLevel 设置默认日志级别
-func SetLogLevel(level uint32) {
+func SetLogLevel(level int) {
 	LogLevel = level
 	if Log != nil {
 		Log.SetLevel(LogLevel)

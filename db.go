@@ -9,7 +9,7 @@ type ArgModel struct {
 	// 事务默认超时
 	TransTimeout time.Duration
 	// 日志级别
-	LogLevel uint32
+	LogLevel int
 }
 
 // Database 数据库对象

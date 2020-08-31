@@ -17,7 +17,7 @@ type ArgTrans struct {
 
 // ArgObjects 获取Objects的定制参数
 type ArgObjects struct {
-	LogLevel uint32 // 日志级别
+	LogLevel int // 日志级别
 }
 
 // Model 模型定义
