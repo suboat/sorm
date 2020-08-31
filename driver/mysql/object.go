@@ -275,7 +275,7 @@ func (ob *Objects) countDo(ex execer) (num int, err error) {
 			ob.log.Debugf("[sql-count-zero] %s %v`", sqlCmd, ob.cacheQueryValues)
 		} else {
 			// debug
-			ob.log.Debugf("[sql-count] %d: %s %s", num, sqlCmd, ob.cacheQueryValues)
+			ob.log.Debugf("[sql-count] %d: %s %v", num, sqlCmd, ob.cacheQueryValues)
 		}
 	}
 	return
