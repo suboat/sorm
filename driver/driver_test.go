@@ -37,8 +37,8 @@ func testGetDB() orm.Database {
 	if len(TestName) == 0 {
 		//TestName = orm.DriverNamePostgres
 		//TestName = orm.DriverNameMysql
-		//TestName = orm.DriverNameSQLite
-		TestName = orm.DriverNameMongo
+		TestName = orm.DriverNameSQLite
+		//TestName = orm.DriverNameMongo
 	}
 	if testDB != nil {
 		return testDB
@@ -56,9 +56,9 @@ func testGetDB() orm.Database {
 	)
 	switch TestName {
 	case orm.DriverNamePostgres:
-		conn = `{"user":"business", "password": "business", "host": "127.0.0.1", "port": "65432", "database": "business", "sslmode": "disable"}`
+		conn = `{"user":"business", "password": "business", "host": "127.0.0.1", "port": "65432", "database": "business"}`
 	case orm.DriverNameMysql:
-		conn = `{"user":"business", "password": "business", "host": "127.0.0.1", "port": "33306", "database": "business", "sslmode": "disable"}`
+		conn = `{"user":"business", "password": "business", "host": "127.0.0.1", "port": "33306", "database": "business"}`
 	case orm.DriverNameSQLite:
 		conn = `{"database":"data_sqlite/business.db"}`
 	case orm.DriverNameMongo:

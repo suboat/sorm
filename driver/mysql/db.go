@@ -1,17 +1,17 @@
 package mysql
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/log"
 	"github.com/suboat/sorm/songo"
-	"net/url"
-
-	_ "github.com/go-sql-driver/mysql" // 驱动包
 
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
+
+	_ "github.com/go-sql-driver/mysql" // 驱动包
+	"github.com/jmoiron/sqlx"
 )
 
 var (
@@ -32,13 +32,14 @@ const (
 
 // ArgConn 数据库链接参数
 type ArgConn struct {
-	Driver   string     `json:"core"`     //
-	Database string     `json:"database"` //
-	User     string     `json:"user"`     //
-	Password string     `json:"password"` //
-	Host     string     `json:"host"`     //
-	Port     string     `json:"port"`     //
-	Params   url.Values `json:"params"`   //
+	Driver string     `json:"driver"` //
+	Params url.Values `json:"params"` //
+	//
+	Host     string `json:"host"`     //
+	Port     string `json:"port"`     //
+	Database string `json:"database"` //
+	User     string `json:"user"`     //
+	Password string `json:"password"` //
 }
 
 // DatabaseSQL 数据库
@@ -74,6 +75,13 @@ func (arg *ArgConn) Init() (err error) {
 		if len(arg.Host) == 0 {
 			arg.Host = "127.0.0.1"
 		}
+	case orm.DriverNameSQLite:
+		if len(arg.Database) == 0 {
+			arg.Database = "sqlite.db"
+		}
+		break
+	case orm.DriverNameMongo:
+		break
 	default:
 		return orm.ErrDbParamsInvalid
 	}
@@ -90,6 +98,8 @@ func (arg *ArgConn) String() (s string) {
 	case orm.DriverNameMysql:
 		s = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s",
 			arg.User, arg.Password, arg.Host, arg.Port, arg.Database, arg.Params.Encode())
+	case orm.DriverNameSQLite:
+		s = arg.Database
 	default:
 		panic("unknown database core")
 	}
@@ -107,9 +117,6 @@ func (arg *ArgConn) ParseFromJSON(jsonStr string) (err error) {
 	}
 	if err = json.Unmarshal([]byte(jsonStr), arg); err != nil {
 		return
-	}
-	if len(arg.Driver) == 0 {
-		arg.Driver = driverName // 当前数据库
 	}
 	return arg.Init()
 }
@@ -176,7 +183,7 @@ func (db *DatabaseSQL) ModelWith(s string, arg *orm.ArgModel) orm.Model {
 // NewDb 新键连接
 func NewDb(arg string) (ret orm.Database, err error) {
 	var (
-		con = new(ArgConn)
+		con = &ArgConn{Driver: driverName}
 		db  = new(DatabaseSQL)
 	)
 	if err = con.ParseFromJSON(arg); err != nil {

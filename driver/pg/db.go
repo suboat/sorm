@@ -1,16 +1,17 @@
 package pg
 
 import (
-	"github.com/jmoiron/sqlx"
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/log"
 	"github.com/suboat/sorm/songo"
 
-	_ "github.com/lib/pq" // 使用lib/pg作为驱动
-
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
+
+	"github.com/jmoiron/sqlx"
+	_ "github.com/lib/pq" // 驱动包
 )
 
 var (
@@ -22,15 +23,23 @@ var (
 	driverName = orm.DriverNamePostgres //
 )
 
+const (
+	// DbVerMysql mysql版本
+	DbVerMysql = "mysql"
+	// DbVerMaria mariadb版本
+	DbVerMaria = "maria"
+)
+
 // ArgConn 数据库链接参数
 type ArgConn struct {
-	Driver   string `json:"core"`     //
+	Driver string     `json:"driver"` //
+	Params url.Values `json:"params"` //
+	//
+	Host     string `json:"host"`     //
+	Port     string `json:"port"`     //
 	Database string `json:"database"` //
 	User     string `json:"user"`     //
 	Password string `json:"password"` //
-	Host     string `json:"host"`     //
-	Port     string `json:"port"`     //
-	SslMode  string `json:"sslMode"`  // postgres
 }
 
 // DatabaseSQL 数据库
@@ -41,6 +50,78 @@ type DatabaseSQL struct {
 }
 
 //
+func (arg *ArgConn) Init() (err error) {
+	switch arg.Driver {
+	case orm.DriverNamePostgres:
+		if arg.Params == nil {
+			arg.Params = url.Values{}
+			arg.Params.Add("sslmode", "disable")
+		}
+		if len(arg.Port) == 0 {
+			arg.Port = "5432"
+		}
+		if len(arg.Host) == 0 {
+			arg.Host = "127.0.0.1"
+		}
+	case orm.DriverNameMysql:
+		if arg.Params == nil {
+			arg.Params = url.Values{}
+			arg.Params.Add("parseTime", "true")
+			arg.Params.Add("collation", "utf8mb4_general_ci") // for emoji
+		}
+		if len(arg.Port) == 0 {
+			arg.Port = "3306"
+		}
+		if len(arg.Host) == 0 {
+			arg.Host = "127.0.0.1"
+		}
+	case orm.DriverNameSQLite:
+		if len(arg.Database) == 0 {
+			arg.Database = "sqlite.db"
+		}
+		break
+	case orm.DriverNameMongo:
+		break
+	default:
+		return orm.ErrDbParamsInvalid
+	}
+	return
+}
+
+// 连接参数序列化
+func (arg *ArgConn) String() (s string) {
+	_ = arg.Init()
+	switch arg.Driver {
+	case orm.DriverNamePostgres:
+		s = fmt.Sprintf("%s://%s:%s@%s:%s/%s?%s",
+			arg.Driver, arg.User, arg.Password, arg.Host, arg.Port, arg.Database, arg.Params.Encode())
+	case orm.DriverNameMysql:
+		s = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?%s",
+			arg.User, arg.Password, arg.Host, arg.Port, arg.Database, arg.Params.Encode())
+	case orm.DriverNameSQLite:
+		s = arg.Database
+	default:
+		panic("unknown database core")
+	}
+	return
+}
+
+//
+func (arg *ArgConn) ParseFromJSON(jsonStr string) (err error) {
+	if arg == nil {
+		return orm.ErrDbParamsInvalid
+	}
+	if len(jsonStr) == 0 {
+		err = orm.ErrDbParamsEmpty
+		return
+	}
+	if err = json.Unmarshal([]byte(jsonStr), arg); err != nil {
+		return
+	}
+	return arg.Init()
+}
+
+//
 func (db *DatabaseSQL) String() string {
 	return db.DB.DriverName()
 }
@@ -48,21 +129,6 @@ func (db *DatabaseSQL) String() string {
 // DriverName 数据库驱动名称
 func (db *DatabaseSQL) DriverName() string {
 	return db.DB.DriverName()
-}
-
-// 连接参数序列化
-func (arg *ArgConn) String() (s string) {
-	switch arg.Driver {
-	case orm.DriverNamePostgres:
-		s = fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=%s",
-			arg.Driver, arg.User, arg.Password, arg.Host, arg.Port, arg.Database, arg.SslMode)
-	case orm.DriverNameMysql:
-		s = fmt.Sprintf("%s:%s@tcp(%s:%s)/%s?parseTime=true",
-			arg.User, arg.Password, arg.Host, arg.Port, arg.Database)
-	default:
-		panic("unknown database core")
-	}
-	return
 }
 
 // Reset 初始或重设数据库连接
@@ -114,40 +180,17 @@ func (db *DatabaseSQL) ModelWith(s string, arg *orm.ArgModel) orm.Model {
 	return m
 }
 
-// 解析参数
-func argParser(jsonStr string) (db *DatabaseSQL, err error) {
-	if len(jsonStr) == 0 {
-		err = orm.ErrDbParamsEmpty
+// NewDb 新键连接
+func NewDb(arg string) (ret orm.Database, err error) {
+	var (
+		con = &ArgConn{Driver: driverName}
+		db  = new(DatabaseSQL)
+	)
+	if err = con.ParseFromJSON(arg); err != nil {
 		return
+	} else {
+		db.ArgConn = con
 	}
-	db = new(DatabaseSQL)
-	arg := new(ArgConn)
-	if err = json.Unmarshal([]byte(jsonStr), &arg); err != nil {
-		return
-	}
-
-	if len(arg.Driver) == 0 {
-		arg.Driver = driverName // 当前数据库
-	}
-
-	switch arg.Driver {
-	case orm.DriverNamePostgres:
-		if len(arg.Port) == 0 {
-			arg.Port = "5432"
-		}
-		if len(arg.SslMode) == 0 {
-			arg.SslMode = "require"
-		}
-	case orm.DriverNameMysql:
-		if len(arg.Port) == 0 {
-			arg.Port = "3306"
-		}
-	default:
-		break
-	}
-
-	db.ArgConn = arg
-
 	// log
 	if orm.Log != nil {
 		if _log, ok := orm.Log.(*log.Logger); ok {
@@ -157,28 +200,15 @@ func argParser(jsonStr string) (db *DatabaseSQL, err error) {
 	if db.log == nil {
 		db.log = log.Log.Copy()
 	}
-	return
-}
-
-// NewDb 新键连接
-func NewDb(arg string) (orm.Database, error) {
-	var (
-		db  *DatabaseSQL
-		err error
-	)
-	//
-	if db, err = argParser(arg); err != nil {
-		return nil, err
-	}
 	//
 	if err = db.Reset(); err != nil {
 		return nil, err
 	}
-
 	// 设置重要参数
 	db.DB.SetMaxOpenConns(MaxOpenConns)
-
-	return db, err
+	//
+	ret = db
+	return
 }
 
 // register
