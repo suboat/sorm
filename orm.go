@@ -11,6 +11,7 @@ const (
 	DriverNameMysql    = "mysql"
 	DriverNamePostgres = "postgres"
 	DriverNameSQLite   = "sqlite3"
+	DriverNameMsSql    = "mssql"
 )
 
 // project key
