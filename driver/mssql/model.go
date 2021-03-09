@@ -253,7 +253,8 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 	if tableExist == 1 {
 		// exist
 		//colCmd = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
-		colCmd = fmt.Sprintf("ALTER TABLE \"%s\" \n%s\n;", m.TableName, strings.Join(colCmdLis, ",\n"))
+		colCmd = fmt.Sprintf(`ALTER TABLE "%s" \n%s\n;`, m.TableName, strings.Join(colCmdLis, ",\n"))
+		println("000", colCmd)
 	} else {
 		// primary key
 		if len(primaryCmd) > 0 {
