@@ -20,6 +20,7 @@ var (
 
 // FieldInfo 结构体中字段信息
 type FieldInfo struct {
+	ReflectKind uint        //
 	TableName   string      //
 	Name        string      //
 	Kind        string      //
@@ -139,6 +140,7 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 			//Log.Debugf(`[struct-info] %s %s`, info.Name, fType.Type.Kind().String())
 
 			// parser type of column  对字段的数据类型进行转换
+			info.ReflectKind = uint(fType.Type.Kind())
 			switch fType.Type.Kind() {
 			case reflect.String:
 				info.Kind = "text"
@@ -165,6 +167,7 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 				//info.Kind = "json"
 				switch fVal.Interface().(type) {
 				case []byte,
+					types.SliceInf, types.SliceStr, // slice type
 					json.RawMessage, // json type
 					types.JSONText:  // package type
 					info.Kind = "bytearray"

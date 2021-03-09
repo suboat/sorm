@@ -122,9 +122,6 @@ func Test_ModelEnsure(t *testing.T) {
 	if err = m1.Ensure(&Programmer{}); err != nil {
 		t.Fatal(err)
 	}
-	if true {
-		return
-	}
 	// 创建记录
 	w0 := new(Programmer)
 	w0.UID = types.NewUID()
@@ -144,14 +141,17 @@ func Test_ModelEnsure(t *testing.T) {
 	w0.Echo = "hello world"
 	w0.Password = []byte("secretBase64")
 	w0.MetaJSON = `{"meta": "content"}`
-	w0.Desc = types.JSONText(`{"say": "hello"}`)
 	w0.Order = []interface{}{"develop", "publish"}
 	w0.Like = map[string]interface{}{"games": []string{"nintendo", "sony"}}
+	w0.Desc = types.JSONText(`{"say": "hello"}`)
 	w0.Meta.Habits = []string{"sleep", "again"}
 	w0.Meta.Skills = map[string]float64{"golang": 95, "php": 5}
 	w0.Meta.Company = "suboat"
 	if err = m0.Objects().Create(w0); err != nil {
 		t.Fatal(err)
+	}
+	if true {
+		return
 	}
 	if err = m1.Objects().With(
 		&orm.ArgObjects{LogLevel: orm.LevelDebug}).Create(w0); err != nil {

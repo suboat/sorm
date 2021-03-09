@@ -3,6 +3,7 @@ package mssql
 import (
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/log"
+	"reflect"
 
 	"database/sql"
 	"fmt"
@@ -159,8 +160,9 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		case "unit":
 			f.Kind = "int"
 		case "json":
-			// default use jsonb
-			f.Kind = "jsonb"
+			if reflect.Kind(f.ReflectKind) == reflect.String {
+				f.Kind = "text" // 即使声明了json,但本身是string类型
+			}
 		case "bytearray":
 			f.Kind = "bytea"
 		case "boolean":
@@ -228,7 +230,9 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 				}
 			case "datetime":
 				colCmd = fmt.Sprintf(`ADD [%s] datetime DEFAULT '0001-01-01 00:00:00.000' NOT NULL`, f.Name)
-			case "text", "bytea", "jsonb":
+			case "bytea", "json":
+				colCmd = fmt.Sprintf(`ADD [%s] varbinary(max) NOT NULL`, f.Name)
+			case "text":
 				colCmd = fmt.Sprintf(`ADD [%s] text DEFAULT '' NOT NULL`, f.Name)
 			default:
 				break
@@ -254,7 +258,9 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 				} else {
 					colCmd = fmt.Sprintf(`[%s] float NOT NULL`, f.Name)
 				}
-			case "text", "bytea", "jsonb":
+			case "bytea", "json":
+				colCmd = fmt.Sprintf(`[%s] varbinary(max) NOT NULL`, f.Name)
+			case "text":
 				colCmd = fmt.Sprintf(`[%s] text NOT NULL`, f.Name)
 			default:
 				break
