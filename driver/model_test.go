@@ -104,9 +104,7 @@ func Test_ModelEnsure(t *testing.T) {
 	if err = m0.Ensure(&Vertebrata{}); err != nil {
 		t.Fatal(err)
 	}
-	if true {
-		return
-	}
+
 	if err = m0.Ensure(&Mammalia{}); err != nil {
 		t.Fatal(err)
 	}
@@ -124,7 +122,9 @@ func Test_ModelEnsure(t *testing.T) {
 	if err = m1.Ensure(&Programmer{}); err != nil {
 		t.Fatal(err)
 	}
-
+	if true {
+		return
+	}
 	// 创建记录
 	w0 := new(Programmer)
 	w0.UID = types.NewUID()

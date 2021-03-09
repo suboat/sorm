@@ -163,9 +163,12 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			f.Kind = "jsonb"
 		case "bytearray":
 			f.Kind = "bytea"
+		case "boolean":
+			f.Kind = "bit"
+			f.DefaultVal = 0
 		case "timestamp":
 			// use timezone
-			f.Kind = "timestamp with time zone"
+			f.Kind = "datetime"
 		case "serial", "bigserial":
 			if len(m.AutoIncrementField) > 0 && m.AutoIncrementField != f.Name {
 				m.log.Errorf(`[ensure-column] dunplicatly AutoIncrementField, last: '%s' now: '%s'`,
@@ -186,10 +189,12 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			primaryKey = strings.Join(f.PrimaryKeys, "_")
 			// primary keys
 			keys := []string{}
+			keysName := []string{}
 			for _, k := range f.PrimaryKeys {
-				keys = append(keys, "\""+k+"\"")
+				keys = append(keys, "["+k+"]")
+				keysName = append(keysName, k)
 			}
-			primaryCmd = fmt.Sprintf("CONSTRAINT %s_pkey PRIMARY KEY (%s)", m.TableName, strings.Join(keys, ", "))
+			primaryCmd = fmt.Sprintf("CONSTRAINT %s_pkey_%s PRIMARY KEY (%s)", m.TableName, strings.Join(keysName, "_"), strings.Join(keys, ", "))
 		}
 
 		// col
@@ -198,50 +203,59 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			if _, ok := fieldExist[f.Name]; ok {
 				continue
 			}
-			colCmd := fmt.Sprintf(`ADD COLUMN "%s" %s DEFAULT '%v'`, f.Name, f.Kind, f.DefaultVal)
+			colCmd := fmt.Sprintf(`ADD [%s] %s DEFAULT %v NOT NULL`, f.Name, f.Kind, f.DefaultVal)
 			switch f.Kind {
 			case "serial", "bigserial":
 				// not default
-				colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s`, f.Name, f.Kind)
+				// IDENTITY(1,1) 起始值1,递增1的意思
+				colCmd = fmt.Sprintf(`ADD [%s] int IDENTITY(1,1)`, f.Name)
 			case "varchar", "char":
 				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s(%d) DEFAULT '%v'`,
+					colCmd = fmt.Sprintf(`ADD [%s] %s(%d) DEFAULT '%v' NOT NULL`,
 						f.Name, f.Kind, f.Size, f.DefaultVal)
 				}
 			case "decimal", "numeric":
 				if f.Size > 0 {
 					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s (%d,%d) DEFAULT '%v'`,
+						colCmd = fmt.Sprintf(`ADD [%s] %s (%d,%d) DEFAULT %v NOT NULL`,
 							f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal)
 					} else {
-						colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s (%d) DEFAULT '%v'`,
+						colCmd = fmt.Sprintf(`ADD [%s] %s (%d) DEFAULT %v NOT NULL`,
 							f.Name, f.Kind, f.Size, f.DefaultVal)
 					}
 				} else {
-					colCmd = fmt.Sprintf(`ADD COLUMN "%s" float DEFAULT '%v'`, f.Name, f.DefaultVal)
+					colCmd = fmt.Sprintf(`ADD [%s] float DEFAULT %v NOT NULL`, f.Name, f.DefaultVal)
 				}
+			case "datetime":
+				colCmd = fmt.Sprintf(`ADD [%s] datetime DEFAULT '0001-01-01 00:00:00.000' NOT NULL`, f.Name)
+			case "text", "bytea", "jsonb":
+				colCmd = fmt.Sprintf(`ADD [%s] text DEFAULT '' NOT NULL`, f.Name)
 			default:
 				break
 			}
 			colCmdLis = append(colCmdLis, colCmd)
 		} else {
 			// create
-			colCmd := fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+			colCmd := fmt.Sprintf(`[%s] %s NOT NULL`, f.Name, f.Kind)
 			switch f.Kind {
+			case "serial", "bigserial":
+				colCmd = fmt.Sprintf(`[%s] int IDENTITY(1,1) NOT NULL`, f.Name)
 			case "varchar", "char":
 				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`"%s" %s(%d)`, f.Name, f.Kind, f.Size)
+					colCmd = fmt.Sprintf(`[%s] %s(%d) NOT NULL`, f.Name, f.Kind, f.Size)
 				}
 			case "decimal", "numeric":
 				if f.Size > 0 {
 					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`"%s" %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
+						colCmd = fmt.Sprintf(`[%s] %s (%d,%d) NOT NULL`, f.Name, f.Kind, f.Size, f.Precision)
 					} else {
-						colCmd = fmt.Sprintf(`"%s" %s (%d)`, f.Name, f.Kind, f.Size)
+						colCmd = fmt.Sprintf(`[%s] %s (%d) NOT NULL`, f.Name, f.Kind, f.Size)
 					}
 				} else {
-					colCmd = fmt.Sprintf(`"%s" float`, f.Name)
+					colCmd = fmt.Sprintf(`[%s] float NOT NULL`, f.Name)
 				}
+			case "text", "bytea", "jsonb":
+				colCmd = fmt.Sprintf(`[%s] text NOT NULL`, f.Name)
 			default:
 				break
 			}
@@ -253,8 +267,8 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 	if tableExist == 1 {
 		// exist
 		//colCmd = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
-		colCmd = fmt.Sprintf(`ALTER TABLE "%s" \n%s\n;`, m.TableName, strings.Join(colCmdLis, ",\n"))
-		println("000", colCmd)
+		//colCmd = fmt.Sprintf(`ALTER TABLE "%s" \n%s\n;`, m.TableName, strings.Join(colCmdLis, ",\n"))
+		//println("000", colCmd)
 	} else {
 		// primary key
 		if len(primaryCmd) > 0 {
@@ -265,10 +279,22 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 
 	// exec
 	if len(colCmdLis) > 0 {
-		if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
-			m.log.Errorf(`[ensure-column] 
+		if tableExist == 1 {
+			// alter不支持一次性进行多个字段的新增,所以要分逐个执行
+			for _, _d := range colCmdLis {
+				_colCmd := fmt.Sprintf("ALTER TABLE %s %s;\n", m.TableName, _d)
+				if m.Result, err = m.DatabaseSQL.DB.Exec(_colCmd); err != nil {
+					m.log.Errorf(`[ensure-column] 
 %s err: %v`, colCmd, err)
-			return
+					return
+				}
+			}
+		} else {
+			if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
+				m.log.Errorf(`[ensure-column] 
+%s err: %v`, colCmd, err)
+				return
+			}
 		}
 		// log
 		m.log.Infof(`[ensure-column] 
@@ -281,29 +307,29 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 // EnsurePrimary 确认主键
 func (m *Model) EnsurePrimary(key []string) (err error) {
 	var (
-		pkey = fmt.Sprintf(`%s_pkey`, m.TableName)
-		keys []string
-		cmd  string
+		pkey       = fmt.Sprintf(`%s_pkey`, m.TableName)
+		keys       []string
+		cmd        string
+		tableExist = 0
 	)
 	for _, k := range key {
-		keys = append(keys, "\""+strings.ToLower(k)+"\"")
+		keys = append(keys, strings.ToLower(k))
 	}
-
-	// cmd
-	cmd = fmt.Sprintf(`DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = '%s') THEN
-        %s
-    END IF;
-END;$$;`, pkey, fmt.Sprintf(
-		`ALTER TABLE "%s" ADD CONSTRAINT "%s" PRIMARY KEY(%s);`,
-		m.TableName, pkey, strings.Join(keys, ", ")))
-
-	// run
-	if m.Result, err = m.DatabaseSQL.DB.Exec(cmd); err != nil {
-		m.log.Errorf(`[ensure-primary] "%s" err: %v`, cmd, err)
+	if err = m.DatabaseSQL.DB.Get(&tableExist,
+		`SELECT COUNT(*) FROM information_schema.KEY_COLUMN_USAGE WHERE table_name=? AND CONSTRAINT_NAME=? `, m.TableName, pkey+"_"+strings.Join(keys, "_")); err != nil {
+		m.log.Errorf("[ensure-column] check table exist err: %v", err)
 		return
 	}
+	if tableExist == 0 {
+		// 主键要求表字段不能有null
+		cmd = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT [%s_%s] PRIMARY KEY CLUSTERED (%s)", m.TableName, pkey, strings.Join(keys, "_"), strings.Join(keys, ","))
+		// run
+		if m.Result, err = m.DatabaseSQL.DB.Exec(cmd); err != nil {
+			m.log.Errorf(`[ensure-primary] "%s" err: %v`, cmd, err)
+			return
+		}
+	}
+
 	return
 }
 
@@ -338,7 +364,11 @@ func (m *Model) EnsureIndex(indexMap orm.Index) (err error) {
 			})
 		}
 	}
-
+	// ignore index type
+	switch indexFiledType {
+	case "bytearray", "json", "text":
+		return
+	}
 	// unique
 	if i, ok := indexMap["Unique"]; ok {
 		if v, ok := i.([]string); ok {
@@ -362,13 +392,13 @@ func (m *Model) EnsureIndex(indexMap orm.Index) (err error) {
 			var keys []string
 			for _, k := range index.Key {
 				k = strings.ToLower(k)
-				keys = append(keys, "\""+k+"\"")
+				keys = append(keys, fmt.Sprintf(`[%s]`, k))
 			}
 			//if len(index.Method) == 0 {
 			//	index.Method = "USING btree" // 默认 btree
 			//}
 			indexKey := fmt.Sprintf(`%s_%s`, m.TableName, strings.Join(index.Key, "_"))
-			indexCmd := fmt.Sprintf(`CREATE %s "%s" ON "%s" %s (%s);`, indexType,
+			indexCmd := fmt.Sprintf(`CREATE %s [%s] ON [%s] %s (%s);`, indexType,
 				indexKey, m.TableName, index.Method, strings.Join(keys, ", "))
 
 			// https://stackoverflow.com/questions/2689766/how-do-you-check-if-a-certain-index-exists-in-a-table
@@ -382,7 +412,6 @@ func (m *Model) EnsureIndex(indexMap orm.Index) (err error) {
 				// index exist
 				return
 			}
-
 			if m.Result, err = m.DatabaseSQL.DB.Exec(indexCmd); err != nil {
 				m.log.Errorf(`[ensure-index] %s, type: %s, err: %v`, indexCmd, indexType, err)
 				return
