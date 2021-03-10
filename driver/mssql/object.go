@@ -69,7 +69,7 @@ func (ob *Objects) Filter(t orm.M) orm.Objects {
 func (ob *Objects) Limit(n int) orm.Objects {
 	if n > -1 {
 		ob.limit = n
-		ob.cacheQueryLimit = fmt.Sprintf(`LIMIT %d OFFSET %d`, ob.limit, ob.skip)
+		ob.cacheQueryLimit = fmt.Sprintf(`OFFSET %d ROWS FETCH NEXT %d ROWS ONLY`, ob.skip, ob.limit)
 	}
 	return ob
 }
@@ -78,7 +78,7 @@ func (ob *Objects) Limit(n int) orm.Objects {
 func (ob *Objects) Skip(n int) orm.Objects {
 	if n > -1 {
 		ob.skip = n
-		ob.cacheQueryLimit = fmt.Sprintf(`LIMIT %d OFFSET %d`, ob.limit, ob.skip)
+		ob.cacheQueryLimit = fmt.Sprintf(`OFFSET %d ROWS FETCH NEXT %d ROWS ONLY`, ob.skip, ob.limit)
 	}
 	return ob
 }

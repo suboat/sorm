@@ -331,7 +331,7 @@ func Benchmark_ModelObjectsQuery(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var d []*Programmer
-		if err = m0.Objects().Filter(orm.M{
+		if err = m0.Objects().Sort("id").Filter(orm.M{
 			"uid": fmt.Sprintf("%d", rand.Int())}).Limit(1).All(&d); err != nil {
 			b.Fatal(err)
 		}
@@ -352,7 +352,7 @@ func Benchmark_ModelObjectsQueryIndex(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		var d []*Programmer
-		if err = m0.Objects().Filter(orm.M{
+		if err = m0.Objects().Sort("id").Filter(orm.M{
 			"uid": fmt.Sprintf("%d", rand.Int())}).Limit(1).All(&d); err != nil {
 			b.Fatal(err)
 		}
@@ -375,7 +375,7 @@ func Benchmark_ModelObjectsQueryParallel(b *testing.B) {
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			var d []*Programmer
-			if err = m0.Objects().Filter(orm.M{
+			if err = m0.Objects().Sort("id").Filter(orm.M{
 				"uid": fmt.Sprintf("%d", rand.Int())}).Limit(1).All(&d); err != nil {
 				b.Fatal(err)
 			}
