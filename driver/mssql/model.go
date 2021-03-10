@@ -229,7 +229,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 					colCmd = fmt.Sprintf(`ADD [%s] float DEFAULT %v NOT NULL`, f.Name, f.DefaultVal)
 				}
 			case "datetime":
-				colCmd = fmt.Sprintf(`ADD [%s] datetimeoffset NOT NULL`, f.Name)
+				colCmd = fmt.Sprintf(`ADD [%s] datetimeoffset DEFAULT '0001-01-01 00:00:00.000' NOT NULL`, f.Name)
 			case "bytea", "json":
 				colCmd = fmt.Sprintf(`ADD [%s] varbinary(max) NOT NULL`, f.Name)
 			case "text":
