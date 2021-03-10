@@ -150,9 +150,6 @@ func Test_ModelEnsure(t *testing.T) {
 	if err = m0.Objects().Create(w0); err != nil {
 		t.Fatal(err)
 	}
-	if true {
-		return
-	}
 	if err = m1.Objects().With(
 		&orm.ArgObjects{LogLevel: orm.LevelDebug}).Create(w0); err != nil {
 		t.Fatal(err)

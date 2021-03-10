@@ -100,3 +100,12 @@ func ParseMgo(m map[string]interface{}) (d map[string]interface{}, err error) {
 	d, err = parseMgo(mCopy)
 	return
 }
+
+// ParseMssql 将songo格式解析为mssql
+func ParseMssql(m map[string]interface{}, prefix int) (sql string, vals []interface{}, err error) {
+	if err = isSongoMapValid(m); err != nil {
+		return
+	}
+	sql, vals, err = parserSQL(m, prefix, "$")
+	return
+}

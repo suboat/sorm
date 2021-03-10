@@ -197,6 +197,14 @@ func (ob *Objects) all(ex execer, result interface{}) (err error) {
 			ob.log.Errorf(`[sql-all] %s err: %v`, _sql, err)
 		}
 	} else {
+		for i, d := range ob.cacheQueryValues {
+			switch _v := d.(type) {
+			case string:
+				ob.cacheQueryValues[i] = PubTimeConvert(_v)
+			default:
+				break
+			}
+		}
 		// select query
 		_sql = fmt.Sprintf(`SELECT * FROM "%s" WHERE %s %s %s`,
 			ob.Model.TableName, ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
@@ -248,13 +256,13 @@ func (ob *Objects) countDo(ex execer) (num int, err error) {
 	var sqlCmd string
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM "%s"`, ob.Model.TableName)
+		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM [%s]`, ob.Model.TableName)
 		if err = ex.Get(&num, sqlCmd); err != nil {
 			ob.log.Errorf(`[sql-count] %s err: %v`, sqlCmd, err)
 		}
 	} else {
 		// count have not limit
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM "%s" WHERE %s`, ob.Model.TableName, ob.cacheQueryWhere)
+		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM [%s] WHERE %s`, ob.Model.TableName, ob.cacheQueryWhere)
 		if err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...); err != nil {
 			ob.log.Errorf(`[sql-count] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
 		}

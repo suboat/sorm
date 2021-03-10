@@ -226,7 +226,7 @@ func init() {
 	orm.RegisterDriver(driverName, NewDb)
 	// 用songo作为解析驱动
 	orm.HookParseSafe = songo.ParseSafe             //
-	orm.HookParseSQL[driverName] = songo.ParseMysql //
+	orm.HookParseSQL[driverName] = songo.ParseMssql //
 	// default log
 	if orm.Log == nil {
 		orm.SetLog(log.Log)
