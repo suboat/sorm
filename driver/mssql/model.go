@@ -106,6 +106,7 @@ func (m *Model) ContigParse(st interface{}) (err error) {
 	var (
 		columns      []string
 		values       []string
+		pairs        []string
 		fieldInfoLis []*orm.FieldInfo
 	)
 	if fieldInfoLis, err = orm.StructModelInfo(st); err != nil {
@@ -113,12 +114,17 @@ func (m *Model) ContigParse(st interface{}) (err error) {
 	}
 	for _, f := range fieldInfoLis {
 		if f.Name != m.AutoIncrementField {
-			columns = append(columns, "\""+f.Name+"\"")
-			values = append(values, ":"+f.Name)
+			c := `"` + f.Name + `"`
+			v := `:` + f.Name
+			p := c + ` = ` + v
+			columns = append(columns, c)
+			values = append(values, v)
+			pairs = append(pairs, p)
 		}
 	}
 	m.ContigInsert = fmt.Sprintf(`"%s" (%s) VALUES (%s)`, m.TableName, strings.Join(columns, ", "), strings.Join(values, ", "))
-	m.ContigUpdate = fmt.Sprintf(`"%s" SET (%s) = (%s)`, m.TableName, strings.Join(columns, ", "), strings.Join(values, ", "))
+	//m.ContigUpdate = fmt.Sprintf(`"%s" SET (%s) = (%s)`, m.TableName, strings.Join(columns, ", "), strings.Join(values, ", "))
+	m.ContigUpdate = fmt.Sprintf(`"%s" SET %s`, m.TableName, strings.Join(pairs, ", ")) // mssql update sql
 	return
 }
 
