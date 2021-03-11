@@ -146,7 +146,6 @@ func (db *DatabaseSQL) Reset() (err error) {
 	if err = db.Close(); err != nil {
 		return
 	}
-	println("????", db.ArgConn.Driver, db.ArgConn.String())
 	if db.DB, err = sqlx.Connect(db.ArgConn.Driver, db.ArgConn.String()); err != nil {
 		return
 	} else if CfgDbUnsafe {
