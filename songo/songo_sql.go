@@ -134,7 +134,11 @@ func parserSQLUnit(k string, v interface{}, idx int, sep string) (sql string, va
 		if sep == "?" {
 			sql = fmt.Sprintf("`%s` %s ?", k, SQLValEq)
 		} else {
-			sql = fmt.Sprintf(`"%s" %s $%d`, k, SQLValEq, idx)
+			if val == nil {
+				sql = fmt.Sprintf(`"%s" IS NULL`, k)
+			} else {
+				sql = fmt.Sprintf(`"%s" %s $%d`, k, SQLValEq, idx)
+			}
 		}
 	}
 
@@ -275,7 +279,9 @@ func parserSQLOper(deep int, prefix *int, sep string, k string, v interface{}, n
 		*prefix++
 		if _sql, _val, err2 := parserSQLUnit(k, v, *prefix, sep); err2 == nil {
 			*nameLis = append(*nameLis, "("+_sql+")")
-			*vals = append(*vals, _val)
+			if _val != nil {
+				*vals = append(*vals, _val)
+			}
 		} else {
 			err = err2
 			return
