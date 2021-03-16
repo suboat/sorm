@@ -224,13 +224,13 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		//
 		var (
 			cmdAdd = fmt.Sprintf("`%s` %s", f.Name, f.Kind)
-			cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
+			cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
 		)
 		switch f.Kind {
 		case "serial", "bigserial":
 			// auto increment
 			cmdAdd = fmt.Sprintf("`%s` %s AUTO_INCREMENT KEY", f.Name, f.Kind)
-			cmdDef = `NOT NULL`
+			cmdDef = ``
 		case "integer":
 			//
 			cmdAdd = fmt.Sprintf("`%s` int(11)", f.Name)
@@ -252,9 +252,9 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			// mariaDB可以设置默认值,mysql不能
 			cmdAdd = fmt.Sprintf("`%s` %s", f.Name, f.Kind)
 			if m.DatabaseSQL.DriverName() == DbVerMaria {
-				cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
+				cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
 			} else {
-				cmdDef = fmt.Sprintf(`NOT NULL`)
+				cmdDef = fmt.Sprintf(`NULL`)
 			}
 		default:
 			break

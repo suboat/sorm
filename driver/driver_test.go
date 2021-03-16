@@ -37,8 +37,8 @@ func testGetDir() string {
 func testGetDB() orm.Database {
 	if len(TestName) == 0 {
 		//TestName = orm.DriverNamePostgres
-		//TestName = orm.DriverNameMysql
-		TestName = orm.DriverNameMsSql
+		TestName = orm.DriverNameMysql
+		//TestName = orm.DriverNameMsSql
 		//TestName = orm.DriverNameSQLite
 		//TestName = orm.DriverNameMongo
 	}
