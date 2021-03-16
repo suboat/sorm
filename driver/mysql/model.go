@@ -127,13 +127,13 @@ func (m *Model) ContigParse(st interface{}) (err error) {
 func (m *Model) EnsureColumn(st interface{}) (err error) {
 	var (
 		fieldInfoLis []*orm.FieldInfo
-		colCmdLis    = []string{}
 		primaryKey   = ""
 		autoIncKey   = ""
 		primaryCmd   = ""
-		colCmd       = ""
-		tableExist   = 0
-		fieldExist   = make(map[string]bool)
+		colCmdLis    = []string{}
+		//colCmd       = ""
+		tableExist = 0
+		fieldExist = make(map[string]bool)
 	)
 	// table exist
 	if err = m.DatabaseSQL.DB.Get(&tableExist,
@@ -162,16 +162,17 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		switch f.Kind {
 		case "unit":
 			f.Kind = "int"
+		case "boolean":
+			f.DefaultVal = "0"
 		case "json":
 			// TODO: maria and mysql<5.7
 			if m.DatabaseSQL.DriverName() == DbVerMaria {
 				// maria not support json type
-				// f.Kind = "varchar"
 				f.Kind = "longtext"
 			} else {
 				// default use json
 				f.Kind = "json"
-				// TODO: mysql<5.7
+				// TODO: mysql<5.7 not support json type
 			}
 		case "bytearray":
 			f.Kind = "blob"
@@ -182,7 +183,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			// default value
 			if s, ok := f.DefaultVal.(string); ok {
 				if s == orm.DefaultTimeStr {
-					f.DefaultVal = "'0001-01-01 00:00:00'"
+					f.DefaultVal = "0001-01-01 00:00:00"
 				}
 			}
 		case "serial", "bigserial":
@@ -220,118 +221,91 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			primaryCmd = fmt.Sprintf("PRIMARY KEY (%s)", strings.Join(keys, ", "))
 		}
 
+		//
+		var (
+			cmdAdd = fmt.Sprintf("`%s` %s", f.Name, f.Kind)
+			cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
+		)
+		switch f.Kind {
+		case "serial", "bigserial":
+			// auto increment
+			cmdAdd = fmt.Sprintf("`%s` %s AUTO_INCREMENT KEY", f.Name, f.Kind)
+			cmdDef = `NOT NULL`
+		case "integer":
+			//
+			cmdAdd = fmt.Sprintf("`%s` int(11)", f.Name)
+		case "varchar", "blob", "char":
+			if f.Size > 0 {
+				cmdAdd = fmt.Sprintf("`%s` %s(%d)", f.Name, f.Kind, f.Size)
+			}
+		case "decimal", "numeric":
+			if f.Size > 0 {
+				if f.Precision >= 0 {
+					cmdAdd = fmt.Sprintf("`%s` %s (%d,%d)", f.Name, f.Kind, f.Size, f.Precision)
+				} else {
+					cmdAdd = fmt.Sprintf("`%s` %s (%d)", f.Name, f.Kind, f.Size)
+				}
+			} else {
+				cmdAdd = fmt.Sprintf("`%s` float", f.Name)
+			}
+		case "text", "longtext", "json":
+			// mariaDB可以设置默认值,mysql不能
+			cmdAdd = fmt.Sprintf("`%s` %s", f.Name, f.Kind)
+			if m.DatabaseSQL.DriverName() == DbVerMaria {
+				cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
+			} else {
+				cmdDef = fmt.Sprintf(`NOT NULL`)
+			}
+		default:
+			break
+		}
+		if f.DefaultVal == nil {
+			cmdDef = `NULL`
+		}
+		//
 		if tableExist == 1 {
+			// add
 			if _, ok := fieldExist[f.Name]; ok {
+				// not modify
 				continue
 			}
-			if (m.AutoIncrementField == f.Name) && (len(f.Name) > 0) {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s NOT NULL AUTO_INCREMENT KEY", f.Name, f.Kind))
-			} else if (f.Kind == "varchar" || f.Kind == "blob" || f.Kind == "char") && f.Size > 0 {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s(%d) DEFAULT '%v'",
-					f.Name, f.Kind, f.Size, f.DefaultVal))
-			} else if f.Kind == "text" {
-				// mariaDB可以设置默认值,mysql不能
-				if m.DatabaseSQL.DriverName() == DbVerMaria {
-					colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s DEFAULT '%v'",
-						f.Name, f.Kind, f.DefaultVal))
-				} else {
-					colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s ", f.Name, f.Kind))
-				}
-			} else if f.Kind == "blob" {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s ",
-					f.Name, f.Kind))
-			} else if f.Kind == "json" {
-				// mariaDB可以设置默认值,mysql不能
-				if m.DatabaseSQL.DriverName() == DbVerMaria {
-					colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s DEFAULT '%v'",
-						f.Name, f.Kind, f.DefaultVal))
-				} else {
-					colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s", f.Name, f.Kind))
-				}
-			} else if f.Kind == "decimal" || f.Kind == "numeric" {
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s (%d,%d) DEFAULT %v",
-							f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal))
-					} else {
-						colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s (%d) DEFAULT %v",
-							f.Name, f.Kind, f.Size, f.DefaultVal))
-					}
-				} else {
-					colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` float DEFAULT %v", f.Name, f.DefaultVal))
-				}
-			} else if f.Kind == "integer" {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` int(11) DEFAULT %v", f.Name, f.DefaultVal))
-			} else {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("ADD `%s` %s DEFAULT %v",
-					f.Name, f.Kind, f.DefaultVal))
-			}
+			cmdAdd = "ADD " + cmdAdd
 		} else {
-			// mysql AUTO_INCREMENT
-			if (m.AutoIncrementField == f.Name) && (len(f.Name) > 0) {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("`%s` %s NOT NULL AUTO_INCREMENT", f.Name, f.Kind))
-			} else if (f.Kind == "varchar" || f.Kind == "blob" || f.Kind == "char") && f.Size > 0 {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("`%s` %s(%d)", f.Name, f.Kind, f.Size))
-			} else if f.Kind == "decimal" || f.Kind == "numeric" {
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						colCmdLis = append(colCmdLis, fmt.Sprintf("`%s` %s (%d,%d) DEFAULT %v",
-							f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal))
-					} else {
-						colCmdLis = append(colCmdLis, fmt.Sprintf("`%s` %s (%d) DEFAULT %v",
-							f.Name, f.Kind, f.Size, f.DefaultVal))
-					}
-				} else {
-					colCmdLis = append(colCmdLis, fmt.Sprintf("`%s` float DEFAULT %v", f.Name, f.DefaultVal))
-				}
-			} else if f.Kind == "integer" {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("`%s` int DEFAULT %v", f.Name, f.DefaultVal))
-			} else {
-				colCmdLis = append(colCmdLis, fmt.Sprintf("`%s` %s", f.Name, f.Kind))
-			}
+			// create
 		}
+		colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef)
 	}
 
-	// new or add
+	// run
 	if tableExist == 1 {
-		// exist
-		//colCmd = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
-		//colCmd = fmt.Sprintf("ALTER TABLE `%s` \n%s\n;", m.TableName, strings.Join(colCmdLis, ",\n"))
+		// add
+		// 因为tidb的alter不支持一次性进行多个字段的新增,所以要分逐个执行
+		for _, v := range colCmdLis {
+			_cmd := fmt.Sprintf("ALTER TABLE `%s` %s;\n", m.TableName, v)
+			if m.Result, err = m.DatabaseSQL.DB.Exec(_cmd); err != nil {
+				m.log.Errorf(`[ensure-column] %s err: %v`, _cmd, err)
+				return
+			}
+		}
 	} else {
+		// create
 		// primary key
 		if len(primaryCmd) > 0 {
 			colCmdLis = append(colCmdLis, primaryCmd)
 		}
+		// increment key
 		if len(autoIncKey) > 0 {
 			colCmdLis = append(colCmdLis, autoIncKey)
 		}
-		colCmd = fmt.Sprintf("CREATE TABLE `%s` (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
-	}
-
-	// exec
-	if len(colCmdLis) > 0 {
-		if tableExist == 1 {
-			// 因为tidb的alter不支持一次性进行多个字段的新增,所以要分逐个执行
-			for _, _d := range colCmdLis {
-				_colCmd := fmt.Sprintf("ALTER TABLE `%s` %s;\n", m.TableName, _d)
-				if m.Result, err = m.DatabaseSQL.DB.Exec(_colCmd); err != nil {
-					m.log.Errorf(`[ensure-column] 
-%s err: %v`, colCmd, err)
-					return
-				}
-			}
-		} else {
-			if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
-				m.log.Errorf(`[ensure-column] 
-%s err: %v`, colCmd, err)
-				return
-			}
+		//
+		_cmd := fmt.Sprintf("CREATE TABLE `%s` (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
+		if m.Result, err = m.DatabaseSQL.DB.Exec(_cmd); err != nil {
+			m.log.Errorf(`[ensure-column] %s err: %v`, _cmd, err)
+			return
 		}
 		// log
-		m.log.Infof(`[ensure-column] 
-%s`, colCmd)
+		m.log.Infof(`[ensure-column] %s`, _cmd)
 	}
-
 	return
 }
 

@@ -63,6 +63,9 @@ type Programmer struct {
 	Like      types.JSONMap  `sorm:"index" json:"like"`                          // map类型
 	Desc      types.JSONText `sorm:"index" json:"desc"`                          // text类型
 	Meta      ProgrammerMeta `sorm:"" json:"meta"`                               // 结构体解析为json类型
+	// 指针类型,允许null
+	Bugs      *string    `sorm:"size(16);index" json:"bugs"` //
+	ApplyTime *time.Time `sorm:"index"`                      //
 }
 
 // programmerMeta 拓展信息
@@ -147,6 +150,8 @@ func Test_ModelEnsure(t *testing.T) {
 	w0.Meta.Habits = []string{"sleep", "again"}
 	w0.Meta.Skills = map[string]float64{"golang": 95, "php": 5}
 	w0.Meta.Company = "suboat"
+	w0.Bugs = &w0.Echo
+	w0.ApplyTime = &time.Time{}
 	if err = m0.Objects().Create(w0); err != nil {
 		t.Fatal(err)
 	}
