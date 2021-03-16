@@ -128,7 +128,7 @@ func (m *Model) ContigParse(st interface{}) (err error) {
 	return
 }
 
-// EnsureColumn 确认字段
+// 确认字段
 func (m *Model) EnsureColumn(st interface{}) (err error) {
 	var (
 		fieldInfoLis []*orm.FieldInfo
@@ -177,6 +177,15 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		case "timestamp":
 			// use timezone
 			f.Kind = "datetime"
+			if f.DefaultVal != nil {
+				if s, ok := f.DefaultVal.(string); ok {
+					if len(s) == 0 {
+						f.DefaultVal = orm.DefaultTimeStr
+					}
+				} else {
+					f.DefaultVal = orm.DefaultTimeStr
+				}
+			}
 		case "serial", "bigserial":
 			if len(m.AutoIncrementField) > 0 && m.AutoIncrementField != f.Name {
 				m.log.Errorf(`[ensure-column] dunplicatly AutoIncrementField, last: '%s' now: '%s'`,
@@ -211,69 +220,87 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			if _, ok := fieldExist[f.Name]; ok {
 				continue
 			}
-			colCmd := fmt.Sprintf(`ADD [%s] %s DEFAULT %v NOT NULL`, f.Name, f.Kind, f.DefaultVal)
+			var (
+				cmdAdd = fmt.Sprintf(`ADD [%s] %s`, f.Name, f.Kind)
+				cmdDef = fmt.Sprintf(`DEFAULT %v NOT NULL`, f.DefaultVal)
+			)
 			switch f.Kind {
 			case "serial", "bigserial":
-				// not default
 				// IDENTITY(1,1) 起始值1,递增1的意思
-				colCmd = fmt.Sprintf(`ADD [%s] int IDENTITY(1,1)`, f.Name)
+				cmdAdd = fmt.Sprintf(`ADD [%s] int IDENTITY(1,1)`, f.Name)
+				cmdDef = `` // not default
 			case "varchar", "char":
 				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`ADD [%s] %s(%d) DEFAULT '%v' NOT NULL`,
-						f.Name, f.Kind, f.Size, f.DefaultVal)
+					cmdAdd = fmt.Sprintf(`ADD [%s] %s(%d)`, f.Name, f.Kind, f.Size)
 				}
+				cmdDef = `DEFAULT '' NOT NULL`
 			case "decimal", "numeric":
 				if f.Size > 0 {
 					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`ADD [%s] %s (%d,%d) DEFAULT %v NOT NULL`,
-							f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal)
+						cmdAdd = fmt.Sprintf(`ADD [%s] %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
 					} else {
-						colCmd = fmt.Sprintf(`ADD [%s] %s (%d) DEFAULT %v NOT NULL`,
-							f.Name, f.Kind, f.Size, f.DefaultVal)
+						cmdAdd = fmt.Sprintf(`ADD [%s] %s (%d)`, f.Name, f.Kind, f.Size)
 					}
 				} else {
-					colCmd = fmt.Sprintf(`ADD [%s] float DEFAULT %v NOT NULL`, f.Name, f.DefaultVal)
+					cmdAdd = fmt.Sprintf(`ADD [%s] float`, f.Name)
 				}
 			case "datetime":
-				colCmd = fmt.Sprintf(`ADD [%s] datetimeoffset DEFAULT '0001-01-01 00:00:00.000' NOT NULL`, f.Name)
+				cmdAdd = fmt.Sprintf(`ADD [%s] datetimeoffset`, f.Name)
+				cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
 			case "bytea", "json":
-				colCmd = fmt.Sprintf(`ADD [%s] varbinary(max) NOT NULL`, f.Name)
+				cmdAdd = fmt.Sprintf(`ADD [%s] varbinary(max)`, f.Name)
+				cmdDef = `NOT NULL`
 			case "text":
-				colCmd = fmt.Sprintf(`ADD [%s] text DEFAULT '' NOT NULL`, f.Name)
+				cmdAdd = fmt.Sprintf(`ADD [%s] text`, f.Name)
+				cmdDef = `DEFAULT '' NOT NULL`
 			default:
 				break
 			}
-			colCmdLis = append(colCmdLis, colCmd)
+			if f.DefaultVal == nil {
+				cmdDef = `NULL`
+			}
+			colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef)
 		} else {
 			// create
-			colCmd := fmt.Sprintf(`[%s] %s NOT NULL`, f.Name, f.Kind)
+			var (
+				cmdAdd = fmt.Sprintf(`[%s] %s`, f.Name, f.Kind)
+				cmdDef = fmt.Sprintf(`DEFAULT %v NOT NULL`, f.DefaultVal)
+			)
 			switch f.Kind {
-			case "datetime":
-				colCmd = fmt.Sprintf(`[%s] datetimeoffset DEFAULT '0001-01-01 00:00:00.000' NOT NULL`, f.Name)
 			case "serial", "bigserial":
-				colCmd = fmt.Sprintf(`[%s] int IDENTITY(1,1) NOT NULL`, f.Name)
+				cmdAdd = fmt.Sprintf(`[%s] int IDENTITY(1,1)`, f.Name)
+				cmdDef = `NOT NULL` // not default
 			case "varchar", "char":
 				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`[%s] %s(%d) NOT NULL`, f.Name, f.Kind, f.Size)
+					cmdAdd = fmt.Sprintf(`[%s] %s(%d)`, f.Name, f.Kind, f.Size)
 				}
+				cmdDef = `DEFAULT '' NOT NULL`
 			case "decimal", "numeric":
 				if f.Size > 0 {
 					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`[%s] %s (%d,%d) NOT NULL`, f.Name, f.Kind, f.Size, f.Precision)
+						cmdAdd = fmt.Sprintf(`[%s] %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
 					} else {
-						colCmd = fmt.Sprintf(`[%s] %s (%d) NOT NULL`, f.Name, f.Kind, f.Size)
+						cmdAdd = fmt.Sprintf(`[%s] %s (%d)`, f.Name, f.Kind, f.Size)
 					}
 				} else {
-					colCmd = fmt.Sprintf(`[%s] float NOT NULL`, f.Name)
+					cmdAdd = fmt.Sprintf(`[%s] float`, f.Name)
 				}
+			case "datetime":
+				cmdAdd = fmt.Sprintf(`[%s] datetimeoffset`, f.Name)
+				cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
 			case "bytea", "json":
-				colCmd = fmt.Sprintf(`[%s] varbinary(max) NOT NULL`, f.Name)
+				cmdAdd = fmt.Sprintf(`[%s] varbinary(max)`, f.Name)
+				cmdDef = `NOT NULL`
 			case "text":
-				colCmd = fmt.Sprintf(`[%s] text NOT NULL`, f.Name)
+				cmdAdd = fmt.Sprintf(`[%s] text`, f.Name)
+				cmdDef = `DEFAULT '' NOT NULL`
 			default:
 				break
 			}
-			colCmdLis = append(colCmdLis, colCmd)
+			if f.DefaultVal == nil {
+				cmdDef = `NULL`
+			}
+			colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef)
 		}
 	}
 

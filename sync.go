@@ -205,10 +205,10 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 					}
 				}
 			case reflect.Ptr:
-				// inherit
 				if fType.Anonymous {
+					// inherit
 					if fVal.IsNil() {
-						// TODO
+						// TODO:
 						err = ErrSyncEmbedPointNil
 						return
 					}
@@ -216,11 +216,27 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 						return
 					}
 				} else {
-					// 指针类型的field不处理
-					// json
-					//info.Kind = "json"
-					//info.DefaultVal = "{}"
-					continue
+					// null:常见类型
+					info.DefaultVal = nil
+					switch fVal.Interface().(type) {
+					case *string:
+						// 可控字段
+						info.Kind = "text"
+					case *int, *int16, *int32, *int64:
+						info.Kind = "integer"
+					case *float64, *float32:
+						info.Kind = "float"
+					case *bool:
+						info.Kind = "boolean"
+					case *time.Time:
+						info.Kind = "timestamp"
+					default:
+						// 指针类型的field不处理
+						// json
+						//info.Kind = "json"
+						//info.DefaultVal = "{}"
+						continue
+					}
 				}
 			default:
 				// ignore

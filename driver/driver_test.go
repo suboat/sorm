@@ -60,7 +60,7 @@ func testGetDB() orm.Database {
 	case orm.DriverNamePostgres:
 		conn = `{"user":"business", "password": "business", "host": "127.0.0.1", "port": "65432", "database": "business"}`
 	case orm.DriverNameMysql:
-		conn = `{"user":"business", "password": "business", "host": "127.0.0.1", "port": "33306", "database": "business"}`
+		conn = `{"user":"tester", "password": "business", "host": "192.168.6.6", "port": "3306", "database": "tester_sorm"}`
 	case orm.DriverNameMsSql:
 		conn = `{"user":"tester", "password": "business", "host": "192.168.6.6", "port": "1433", "database": "tester_main"}`
 	case orm.DriverNameSQLite:

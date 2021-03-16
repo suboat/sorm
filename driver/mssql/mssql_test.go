@@ -8,8 +8,9 @@ import (
 )
 
 var (
-	testConn = `{"user":"tester", "password": "business", "host": "192.168.6.6", "port": "1433", "database": "tester_main"}`
-	testDB   orm.Database
+	testConn = `{"user":"sa", "password": "Qa123", "host": "192.168.6.188", "port": "1433", "database": "EWCSSJK"}`
+	//testConn = `{"user":"tester", "password": "business", "host": "192.168.6.6", "port": "1433", "database": "tester_main"}`
+	testDB orm.Database
 )
 
 //
