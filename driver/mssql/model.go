@@ -132,10 +132,9 @@ func (m *Model) ContigParse(st interface{}) (err error) {
 func (m *Model) EnsureColumn(st interface{}) (err error) {
 	var (
 		fieldInfoLis []*orm.FieldInfo
-		colCmdLis    = []string{}
-		primaryKey   = ""
+		colCmdLis    []string
+		primaryKey   []string
 		primaryCmd   = ""
-		colCmd       = ""
 		tableExist   = 0
 		fieldExist   = make(map[string]bool)
 	)
@@ -185,6 +184,8 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 				} else {
 					f.DefaultVal = orm.DefaultTimeStr
 				}
+			} else {
+				f.DefaultVal = orm.DefaultTimeStr
 			}
 		case "serial", "bigserial":
 			if len(m.AutoIncrementField) > 0 && m.AutoIncrementField != f.Name {
@@ -200,10 +201,11 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		if f.Primary {
 			if len(primaryKey) > 0 {
 				//log.Warn("define dunplicatly primary key, use last: ", primaryKey, " ", f.Name)
-				err = fmt.Errorf("define dunplicatly primary key, use last: %s %s", primaryKey, f.Name)
+				err = fmt.Errorf("define dunplicatly primary key, use last: %s %s",
+					strings.Join(primaryKey, "_"), f.Name)
 				return
 			}
-			primaryKey = strings.Join(f.PrimaryKeys, "_")
+			primaryKey = f.PrimaryKeys
 			// primary keys
 			keys := []string{}
 			keysName := []string{}
@@ -215,133 +217,93 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		}
 
 		// col
+		var (
+			cmdAdd    = fmt.Sprintf(`[%s] %s`, f.Name, f.Kind)
+			cmdDef    = fmt.Sprintf(`DEFAULT '%v'`, f.DefaultVal)
+			isNotNull = false
+		)
+		for _, v := range primaryKey {
+			if v == f.Name {
+				isNotNull = true
+				cmdDef = ""
+				break
+			}
+		}
+		switch f.Kind {
+		case "serial", "bigserial":
+			// IDENTITY(1,1) 起始值1,递增1的意思
+			cmdAdd = fmt.Sprintf(`[%s] int IDENTITY(1,1)`, f.Name)
+			cmdDef, isNotNull = ``, true // not default
+		case "varchar", "char":
+			if f.Size > 0 {
+				cmdAdd = fmt.Sprintf(`[%s] %s(%d)`, f.Name, f.Kind, f.Size)
+			}
+		case "decimal", "numeric":
+			if f.Size > 0 {
+				if f.Precision >= 0 {
+					cmdAdd = fmt.Sprintf(`[%s] %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
+				} else {
+					cmdAdd = fmt.Sprintf(`[%s] %s (%d)`, f.Name, f.Kind, f.Size)
+				}
+			} else {
+				cmdAdd = fmt.Sprintf(`[%s] float`, f.Name)
+			}
+		case "datetime":
+			cmdAdd = fmt.Sprintf(`[%s] datetimeoffset`, f.Name)
+			cmdDef = fmt.Sprintf(`DEFAULT '%v'`, f.DefaultVal)
+		case "bytea", "json":
+			cmdAdd = fmt.Sprintf(`[%s] varbinary(max)`, f.Name)
+			cmdDef = `` // 不可设默认值
+		case "text":
+			cmdAdd = fmt.Sprintf(`[%s] text`, f.Name)
+			cmdDef = `DEFAULT ''`
+		default:
+			break
+		}
+		if isNotNull {
+			cmdDef += ` NOT NULL`
+		} else {
+			cmdDef += ` NULL`
+		}
+		//
 		if tableExist == 1 {
 			// add
 			if _, ok := fieldExist[f.Name]; ok {
 				continue
 			}
-			var (
-				cmdAdd = fmt.Sprintf(`ADD [%s] %s`, f.Name, f.Kind)
-				cmdDef = fmt.Sprintf(`DEFAULT %v NOT NULL`, f.DefaultVal)
-			)
-			switch f.Kind {
-			case "serial", "bigserial":
-				// IDENTITY(1,1) 起始值1,递增1的意思
-				cmdAdd = fmt.Sprintf(`ADD [%s] int IDENTITY(1,1)`, f.Name)
-				cmdDef = `` // not default
-			case "varchar", "char":
-				if f.Size > 0 {
-					cmdAdd = fmt.Sprintf(`ADD [%s] %s(%d)`, f.Name, f.Kind, f.Size)
-				}
-				cmdDef = `DEFAULT '' NOT NULL`
-			case "decimal", "numeric":
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						cmdAdd = fmt.Sprintf(`ADD [%s] %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
-					} else {
-						cmdAdd = fmt.Sprintf(`ADD [%s] %s (%d)`, f.Name, f.Kind, f.Size)
-					}
-				} else {
-					cmdAdd = fmt.Sprintf(`ADD [%s] float`, f.Name)
-				}
-			case "datetime":
-				cmdAdd = fmt.Sprintf(`ADD [%s] datetimeoffset`, f.Name)
-				cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
-			case "bytea", "json":
-				cmdAdd = fmt.Sprintf(`ADD [%s] varbinary(max)`, f.Name)
-				cmdDef = `NOT NULL`
-			case "text":
-				cmdAdd = fmt.Sprintf(`ADD [%s] text`, f.Name)
-				cmdDef = `DEFAULT '' NOT NULL`
-			default:
-				break
-			}
-			if f.DefaultVal == nil {
-				cmdDef = `NULL`
-			}
-			colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef)
+			cmdAdd = "ADD " + cmdAdd
 		} else {
 			// create
-			var (
-				cmdAdd = fmt.Sprintf(`[%s] %s`, f.Name, f.Kind)
-				cmdDef = fmt.Sprintf(`DEFAULT %v NOT NULL`, f.DefaultVal)
-			)
-			switch f.Kind {
-			case "serial", "bigserial":
-				cmdAdd = fmt.Sprintf(`[%s] int IDENTITY(1,1)`, f.Name)
-				cmdDef = `NOT NULL` // not default
-			case "varchar", "char":
-				if f.Size > 0 {
-					cmdAdd = fmt.Sprintf(`[%s] %s(%d)`, f.Name, f.Kind, f.Size)
-				}
-				cmdDef = `DEFAULT '' NOT NULL`
-			case "decimal", "numeric":
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						cmdAdd = fmt.Sprintf(`[%s] %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
-					} else {
-						cmdAdd = fmt.Sprintf(`[%s] %s (%d)`, f.Name, f.Kind, f.Size)
-					}
-				} else {
-					cmdAdd = fmt.Sprintf(`[%s] float`, f.Name)
-				}
-			case "datetime":
-				cmdAdd = fmt.Sprintf(`[%s] datetimeoffset`, f.Name)
-				cmdDef = fmt.Sprintf(`DEFAULT '%v' NOT NULL`, f.DefaultVal)
-			case "bytea", "json":
-				cmdAdd = fmt.Sprintf(`[%s] varbinary(max)`, f.Name)
-				cmdDef = `NOT NULL`
-			case "text":
-				cmdAdd = fmt.Sprintf(`[%s] text`, f.Name)
-				cmdDef = `DEFAULT '' NOT NULL`
-			default:
-				break
-			}
-			if f.DefaultVal == nil {
-				cmdDef = `NULL`
-			}
-			colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef)
 		}
+		colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef)
 	}
 
-	// new or add
+	// run
 	if tableExist == 1 {
-		// exist
-		//colCmd = fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
-		//colCmd = fmt.Sprintf(`ALTER TABLE "%s" \n%s\n;`, m.TableName, strings.Join(colCmdLis, ",\n"))
-		//println("000", colCmd)
+		// add
+		// alter不支持一次性进行多个字段的新增,所以要分逐个执行
+		for _, v := range colCmdLis {
+			_cmd := fmt.Sprintf("ALTER TABLE %s %s;\n", m.TableName, v)
+			if m.Result, err = m.DatabaseSQL.DB.Exec(_cmd); err != nil {
+				m.log.Errorf(`[ensure-column] %s err: %v`, _cmd, err)
+				return
+			}
+		}
 	} else {
+		// create
 		// primary key
 		if len(primaryCmd) > 0 {
 			colCmdLis = append(colCmdLis, primaryCmd)
 		}
-		colCmd = fmt.Sprintf("CREATE TABLE \"%s\" (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
-	}
-
-	// exec
-	if len(colCmdLis) > 0 {
-		if tableExist == 1 {
-			// alter不支持一次性进行多个字段的新增,所以要分逐个执行
-			for _, _d := range colCmdLis {
-				_colCmd := fmt.Sprintf("ALTER TABLE %s %s;\n", m.TableName, _d)
-				if m.Result, err = m.DatabaseSQL.DB.Exec(_colCmd); err != nil {
-					m.log.Errorf(`[ensure-column] 
-%s err: %v`, colCmd, err)
-					return
-				}
-			}
-		} else {
-			if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
-				m.log.Errorf(`[ensure-column] 
-%s err: %v`, colCmd, err)
-				return
-			}
+		//
+		_cmd := fmt.Sprintf("CREATE TABLE \"%s\" (\n%s\n);", m.TableName, strings.Join(colCmdLis, ",\n"))
+		if m.Result, err = m.DatabaseSQL.DB.Exec(_cmd); err != nil {
+			m.log.Errorf(`[ensure-column] %s err: %v`, _cmd, err)
+			return
 		}
 		// log
-		m.log.Infof(`[ensure-column] 
-%s`, colCmd)
+		m.log.Infof(`[ensure-column] %s`, _cmd)
 	}
-
 	return
 }
 
@@ -363,7 +325,8 @@ func (m *Model) EnsurePrimary(key []string) (err error) {
 	}
 	if tableExist == 0 {
 		// 主键要求表字段不能有null
-		cmd = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT [%s_%s] PRIMARY KEY CLUSTERED (%s)", m.TableName, pkey, strings.Join(keys, "_"), strings.Join(keys, ","))
+		cmd = fmt.Sprintf("ALTER TABLE %s ADD CONSTRAINT [%s_%s] PRIMARY KEY CLUSTERED (%s)",
+			m.TableName, pkey, strings.Join(keys, "_"), strings.Join(keys, ","))
 		// run
 		if m.Result, err = m.DatabaseSQL.DB.Exec(cmd); err != nil {
 			m.log.Errorf(`[ensure-primary] "%s" err: %v`, cmd, err)
