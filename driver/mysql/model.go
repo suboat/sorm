@@ -195,11 +195,6 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			m.AutoIncrementField = f.Name
 
 			// mysql covert, auto column and it must be defined as a key
-			if f.Kind == "serial" {
-				f.Kind = "int"
-			} else {
-				f.Kind = "bigint"
-			}
 			autoIncKey = fmt.Sprintf("KEY `%s` (`%s`)", f.Name, f.Name)
 
 		default:
@@ -227,9 +222,21 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
 		)
 		switch f.Kind {
-		case "serial", "bigserial":
+		case "serial":
+			if tableExist == 1 {
+				cmdAdd = fmt.Sprintf("`%s` int AUTO_INCREMENT KEY", f.Name)
+			} else {
+				cmdAdd = fmt.Sprintf("`%s` int AUTO_INCREMENT", f.Name)
+			}
+			//
+			cmdDef = ``
+		case "bigserial":
+			if tableExist == 1 {
+				cmdAdd = fmt.Sprintf("`%s` bigint AUTO_INCREMENT KEY", f.Name)
+			} else {
+				cmdAdd = fmt.Sprintf("`%s` bigint AUTO_INCREMENT", f.Name)
+			}
 			// auto increment
-			cmdAdd = fmt.Sprintf("`%s` %s AUTO_INCREMENT KEY", f.Name, f.Kind)
 			cmdDef = ``
 		case "integer":
 			//
