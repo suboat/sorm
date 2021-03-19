@@ -113,7 +113,7 @@ func (m *Model) ContigParse(st interface{}) (err error) {
 		return
 	}
 	for _, f := range fieldInfoLis {
-		if f.Name != m.AutoIncrementField {
+		if f.Name != m.AutoIncrementField && f.Serial == false {
 			c := `"` + f.Name + `"`
 			v := `:` + f.Name
 			p := c + ` = ` + v
