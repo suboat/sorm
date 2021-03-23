@@ -35,12 +35,12 @@ func testGetDir() string {
 
 // 读取数据库配置
 func testGetDB() orm.Database {
-	if len(TestName) == 0 {
-		//TestName = orm.DriverNamePostgres
+	switch v := os.Getenv("TDB"); v {
+	case orm.DriverNamePostgres, orm.DriverNameMysql, orm.DriverNameMsSql, orm.DriverNameSQLite, orm.DriverNameMongo:
+		TestName = v
+	default:
+		// 默认测试数据库
 		TestName = orm.DriverNameMysql
-		//TestName = orm.DriverNameMsSql
-		//TestName = orm.DriverNameSQLite
-		//TestName = orm.DriverNameMongo
 	}
 	if testDB != nil {
 		return testDB
