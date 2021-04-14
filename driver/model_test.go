@@ -202,6 +202,13 @@ func Test_ModelEnsure(t *testing.T) {
 	if w1.Birthday.Equal(r2.Birthday) {
 		w1.Birthday = r2.Birthday // 忽略时区表达差异
 	}
+	if w0.ApplyTime.Equal(*r0.ApplyTime) {
+		w0.ApplyTime = r0.ApplyTime // 忽略时区表达差异
+	}
+	if w1.ApplyTime.Equal(*r2.ApplyTime) {
+		w1.ApplyTime = r2.ApplyTime // 忽略时区表达差异
+	}
+	//
 	if r0.ID == 1 && w0.ID == 0 {
 		// 递增就正确
 		w0.ID = r0.ID

@@ -191,62 +191,111 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			}
 			primaryCmd = fmt.Sprintf("CONSTRAINT %s_pkey PRIMARY KEY (%s)", m.TableName, strings.Join(keys, ", "))
 		}
+		var (
+			cmdAdd = fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+			cmdDef = fmt.Sprintf(`DEFAULT %v NULL`, f.DefaultVal)
+		)
 
-		// col
+		switch f.Kind {
+		case "serial", "bigserial":
+			cmdAdd = fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+			cmdDef = ""
+		case "varchar", "char":
+			if f.Size > 0 {
+				cmdAdd = fmt.Sprintf(`"%s" %s(%d)`,
+					f.Name, f.Kind, f.Size)
+			}
+		case "timestamp with time zone":
+			cmdAdd = fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+			cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
+		case "decimal", "numeric":
+			if f.Size > 0 {
+				if f.Precision >= 0 {
+					cmdAdd = fmt.Sprintf(`"%s" %s (%d,%d)`,
+						f.Name, f.Kind, f.Size, f.Precision)
+				} else {
+					cmdAdd = fmt.Sprintf(`"%s" %s (%d)`,
+						f.Name, f.Kind, f.Size)
+				}
+			} else {
+				cmdAdd = fmt.Sprintf(`"%s" float`, f.Name)
+			}
+		case "bytea", "jsonb":
+			cmdDef = fmt.Sprintf(`DEFAULT '{}' NULL`)
+		default:
+			break
+		}
+		if f.DefaultVal == nil {
+			cmdDef = "NULL"
+		}
 		if tableExist == 1 {
-			// add
 			if _, ok := fieldExist[f.Name]; ok {
+				// not modify
 				continue
 			}
-			colCmd := fmt.Sprintf(`ADD COLUMN "%s" %s DEFAULT '%v'`, f.Name, f.Kind, f.DefaultVal)
-			switch f.Kind {
-			case "serial", "bigserial":
-				// not default
-				colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s`, f.Name, f.Kind)
-			case "varchar", "char":
-				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s(%d) DEFAULT '%v'`,
-						f.Name, f.Kind, f.Size, f.DefaultVal)
-				}
-			case "decimal", "numeric":
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s (%d,%d) DEFAULT '%v'`,
-							f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal)
-					} else {
-						colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s (%d) DEFAULT '%v'`,
-							f.Name, f.Kind, f.Size, f.DefaultVal)
-					}
-				} else {
-					colCmd = fmt.Sprintf(`ADD COLUMN "%s" float DEFAULT '%v'`, f.Name, f.DefaultVal)
-				}
-			default:
-				break
-			}
-			colCmdLis = append(colCmdLis, colCmd)
+			colCmd = fmt.Sprintf(`ADD COLUMN %s %s`, cmdAdd, cmdDef)
 		} else {
-			// create
-			colCmd := fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
-			switch f.Kind {
-			case "varchar", "char":
-				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`"%s" %s(%d)`, f.Name, f.Kind, f.Size)
-				}
-			case "decimal", "numeric":
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`"%s" %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
-					} else {
-						colCmd = fmt.Sprintf(`"%s" %s (%d)`, f.Name, f.Kind, f.Size)
-					}
-				} else {
-					colCmd = fmt.Sprintf(`"%s" float`, f.Name)
-				}
-			default:
-				break
-			}
-			colCmdLis = append(colCmdLis, colCmd)
+			colCmd = fmt.Sprintf(`%s %s`, cmdAdd, cmdDef)
 		}
+		colCmdLis = append(colCmdLis, colCmd)
+
+		/////////////
+		// old col
+		//if tableExist == 1 {
+		//	// add
+		//	if _, ok := fieldExist[f.Name]; ok {
+		//		continue
+		//	}
+		//	colCmd := fmt.Sprintf(`ADD COLUMN "%s" %s DEFAULT '%v'`, f.Name, f.Kind, f.DefaultVal)
+		//	switch f.Kind {
+		//	case "serial", "bigserial":
+		//		// not default
+		//		colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s`, f.Name, f.Kind)
+		//	case "varchar", "char":
+		//		if f.Size > 0 {
+		//			colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s(%d) DEFAULT '%v'`,
+		//				f.Name, f.Kind, f.Size, f.DefaultVal)
+		//		}
+		//	case "decimal", "numeric":
+		//		if f.Size > 0 {
+		//			if f.Precision >= 0 {
+		//				colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s (%d,%d) DEFAULT '%v'`,
+		//					f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal)
+		//			} else {
+		//				colCmd = fmt.Sprintf(`ADD COLUMN "%s" %s (%d) DEFAULT '%v'`,
+		//					f.Name, f.Kind, f.Size, f.DefaultVal)
+		//			}
+		//		} else {
+		//			colCmd = fmt.Sprintf(`ADD COLUMN "%s" float DEFAULT '%v'`, f.Name, f.DefaultVal)
+		//		}
+		//	default:
+		//		break
+		//	}
+		//	colCmdLis = append(colCmdLis, colCmd)
+		//} else {
+		//	// create
+		//	colCmd := fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+		//	switch f.Kind {
+		//	case "varchar", "char":
+		//		if f.Size > 0 {
+		//			colCmd = fmt.Sprintf(`"%s" %s(%d)`, f.Name, f.Kind, f.Size)
+		//		}
+		//	case "decimal", "numeric":
+		//		if f.Size > 0 {
+		//			if f.Precision >= 0 {
+		//				colCmd = fmt.Sprintf(`"%s" %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
+		//			} else {
+		//				colCmd = fmt.Sprintf(`"%s" %s (%d)`, f.Name, f.Kind, f.Size)
+		//			}
+		//		} else {
+		//			colCmd = fmt.Sprintf(`"%s" float`, f.Name)
+		//		}
+		//	default:
+		//		break
+		//	}
+		//	colCmdLis = append(colCmdLis, colCmd)
+		//}
+		///////
 	}
 
 	// new or add
@@ -264,6 +313,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 
 	// exec
 	if len(colCmdLis) > 0 {
+		fmt.Println(colCmd)
 		if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
 			m.log.Errorf(`[ensure-column] 
 %s err: %v`, colCmd, err)
