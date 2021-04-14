@@ -313,7 +313,6 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 
 	// exec
 	if len(colCmdLis) > 0 {
-		fmt.Println(colCmd)
 		if m.Result, err = m.DatabaseSQL.DB.Exec(colCmd); err != nil {
 			m.log.Errorf(`[ensure-column] 
 %s err: %v`, colCmd, err)
