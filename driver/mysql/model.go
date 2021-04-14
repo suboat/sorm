@@ -224,7 +224,11 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		switch f.Kind {
 		case "serial":
 			if tableExist == 1 {
-				cmdAdd = fmt.Sprintf("`%s` int UNIQUE AUTO_INCREMENT", f.Name)
+				if f.Primary {
+					cmdAdd = fmt.Sprintf("`%s` int AUTO_INCREMENT", f.Name)
+				} else {
+					cmdAdd = fmt.Sprintf("`%s` int UNIQUE AUTO_INCREMENT", f.Name)
+				}
 			} else {
 				cmdAdd = fmt.Sprintf("`%s` int AUTO_INCREMENT", f.Name)
 			}
@@ -232,7 +236,11 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			cmdDef = ``
 		case "bigserial":
 			if tableExist == 1 {
-				cmdAdd = fmt.Sprintf("`%s` bigint UNIQUE AUTO_INCREMENT", f.Name)
+				if f.Primary {
+					cmdAdd = fmt.Sprintf("`%s` bigint AUTO_INCREMENT", f.Name)
+				} else {
+					cmdAdd = fmt.Sprintf("`%s` bigint UNIQUE AUTO_INCREMENT", f.Name)
+				}
 			} else {
 				cmdAdd = fmt.Sprintf("`%s` bigint AUTO_INCREMENT", f.Name)
 			}
