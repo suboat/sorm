@@ -204,65 +204,114 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			}
 		}
 
-		// col
+		//
+		var (
+			cmdAdd = fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+			cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
+		)
+
+		switch f.Kind {
+		case "serial", "bigserial":
+			cmdAdd = fmt.Sprintf(`"%s" INTEGER`, f.Name)
+		case "varchar", "char":
+			if f.Size > 0 {
+				cmdAdd = fmt.Sprintf(`"%s" %s(%d)`, f.Name, f.Kind, f.Size)
+			}
+		case "decimal", "numeric":
+			if f.Size > 0 {
+				if f.Precision >= 0 {
+					cmdAdd = fmt.Sprintf(`"%s" %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
+				} else {
+					cmdAdd = fmt.Sprintf(`"%s" %s (%d)`, f.Name, f.Kind, f.Size)
+				}
+			} else {
+				cmdAdd = fmt.Sprintf(`"%s" float`, f.Name)
+			}
+		case "int":
+			cmdAdd = fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+		default:
+			break
+		}
+
+		if f.DefaultVal == nil {
+			cmdDef = `NULL`
+		}
+		//
 		if tableExist == 1 {
 			// add
 			if _, ok := fieldExist[f.Name]; ok {
+				// not modify
 				continue
 			}
-			colCmd := fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s DEFAULT '%v';`, m.TableName, f.Name, f.Kind, f.DefaultVal)
-			switch f.Kind {
-			case "serial", "bigserial":
-				// not default
-				colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" INTEGER DEFAULT 0;`, m.TableName, f.Name)
-			case "varchar", "char":
-				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s(%d) DEFAULT '%v';`, m.TableName,
-						f.Name, f.Kind, f.Size, f.DefaultVal)
-				}
-			case "decimal", "numeric":
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s (%d,%d) DEFAULT %v;`, m.TableName,
-							f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal)
-					} else {
-						colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s (%d) DEFAULT %v;`, m.TableName,
-							f.Name, f.Kind, f.Size, f.DefaultVal)
-					}
-				} else {
-					colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" float DEFAULT %v;`, m.TableName, f.Name, f.DefaultVal)
-				}
-			case "int", "float":
-				colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s DEFAULT %v;`, m.TableName, f.Name, f.Kind, f.DefaultVal)
-			default:
-
-			}
-			colCmdLis = append(colCmdLis, colCmd)
+			//cmdAdd = "ADD " + cmdAdd
+			cmdAdd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN %s`, m.TableName, cmdAdd)
+			colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef+";")
 		} else {
 			// create
-			colCmd := fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
-			switch f.Kind {
-			case "varchar", "char":
-				if f.Size > 0 {
-					colCmd = fmt.Sprintf(`"%s" %s(%d)`, f.Name, f.Kind, f.Size)
-				}
-			case "decimal", "numeric":
-				if f.Size > 0 {
-					if f.Precision >= 0 {
-						colCmd = fmt.Sprintf(`"%s" %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
-					} else {
-						colCmd = fmt.Sprintf(`"%s" %s (%d)`, f.Name, f.Kind, f.Size)
-					}
-				} else {
-					colCmd = fmt.Sprintf(`"%s" float`, f.Name)
-				}
-			case "serial", "bigserial":
-				colCmd = fmt.Sprintf(`"%s" INTEGER DEFAULT 0`, f.Name)
-			default:
-				break
-			}
-			colCmdLis = append(colCmdLis, colCmd)
+			colCmdLis = append(colCmdLis, cmdAdd+" "+cmdDef)
 		}
+
+		///////////////////////////////////////////////////////////////
+
+		// col
+		//if tableExist == 1 {
+		//	// add
+		//	if _, ok := fieldExist[f.Name]; ok {
+		//		continue
+		//	}
+		//	colCmd := fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s DEFAULT '%v';`, m.TableName, f.Name, f.Kind, f.DefaultVal)
+		//	switch f.Kind {
+		//	case "serial", "bigserial":
+		//		// not default
+		//		colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" INTEGER DEFAULT 0;`, m.TableName, f.Name)
+		//	case "varchar", "char":
+		//		if f.Size > 0 {
+		//			colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s(%d) DEFAULT '%v';`, m.TableName,
+		//				f.Name, f.Kind, f.Size, f.DefaultVal)
+		//		}
+		//	case "decimal", "numeric":
+		//		if f.Size > 0 {
+		//			if f.Precision >= 0 {
+		//				colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s (%d,%d) DEFAULT %v;`, m.TableName,
+		//					f.Name, f.Kind, f.Size, f.Precision, f.DefaultVal)
+		//			} else {
+		//				colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s (%d) DEFAULT %v;`, m.TableName,
+		//					f.Name, f.Kind, f.Size, f.DefaultVal)
+		//			}
+		//		} else {
+		//			colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" float DEFAULT %v;`, m.TableName, f.Name, f.DefaultVal)
+		//		}
+		//	case "int", "float":
+		//		colCmd = fmt.Sprintf(`ALTER TABLE "%s" ADD COLUMN "%s" %s DEFAULT %v;`, m.TableName, f.Name, f.Kind, f.DefaultVal)
+		//	default:
+		//
+		//	}
+		//	colCmdLis = append(colCmdLis, colCmd)
+		//} else {
+		//	// create
+		//	colCmd := fmt.Sprintf(`"%s" %s`, f.Name, f.Kind)
+		//	switch f.Kind {
+		//	case "varchar", "char":
+		//		if f.Size > 0 {
+		//			colCmd = fmt.Sprintf(`"%s" %s(%d)`, f.Name, f.Kind, f.Size)
+		//		}
+		//	case "decimal", "numeric":
+		//		if f.Size > 0 {
+		//			if f.Precision >= 0 {
+		//				colCmd = fmt.Sprintf(`"%s" %s (%d,%d)`, f.Name, f.Kind, f.Size, f.Precision)
+		//			} else {
+		//				colCmd = fmt.Sprintf(`"%s" %s (%d)`, f.Name, f.Kind, f.Size)
+		//			}
+		//		} else {
+		//			colCmd = fmt.Sprintf(`"%s" float`, f.Name)
+		//		}
+		//	case "serial", "bigserial":
+		//		colCmd = fmt.Sprintf(`"%s" INTEGER DEFAULT 0`, f.Name)
+		//	default:
+		//		break
+		//	}
+		//	colCmdLis = append(colCmdLis, colCmd)
+		//}
 	}
 
 	// new or add

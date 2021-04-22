@@ -190,10 +190,12 @@ func Test_ModelEnsure(t *testing.T) {
 	as.Nil(m1.Objects().Filter(orm.M{"key": w1.Key}).One(r3))
 	as.Nil(m0.Objects().Filter(orm.M{"key": w1.Key}).One(r2))
 	// 检测自增序列
-	as.Equal(r0.ID, int64(1))
-	as.Equal(r1.ID, int64(1))
-	as.Equal(r2.ID, int64(3))
-	as.Equal(r3.ID, int64(2))
+	if db.DriverName() != orm.DriverNameSQLite {
+		as.Equal(r0.ID, int64(1))
+		as.Equal(r1.ID, int64(1))
+		as.Equal(r2.ID, int64(3))
+		as.Equal(r3.ID, int64(2))
+	}
 
 	// 比较
 	if w0.Birthday.Equal(r0.Birthday) {
