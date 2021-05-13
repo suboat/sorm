@@ -101,6 +101,11 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 	} else {
 		res = []*FieldInfo{}
 	}
+	var (
+		primaryKeys []string
+		primaryMap  = make(map[string]int)
+	)
+	//
 	stVal := reflect.Indirect(reflect.ValueOf(st))
 	switch stVal.Kind() {
 	case reflect.Struct: // 结构体
@@ -115,6 +120,7 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 				dKey  = strings.Split(fType.Tag.Get("db"), ",")[0] // alias field name 使用db字眼的时候才有
 				c     = int(rune(fType.Name[0]))                   // 字段的首字母的ascii值
 			)
+			info.AllowNull = true // 默认允许空
 
 			// ignore tag 为"-"的不做处理(不当作表的字段)
 			if fKey == "-" || dKey == "-" {
@@ -266,13 +272,16 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 					switch k {
 					case "primary":
 						info.Primary = true
+						info.AllowNull = false
 						for _, _key := range strings.Split(v, ",") {
 							if len(_key) > 0 {
 								info.PrimaryKeys = append(info.PrimaryKeys, _key)
+								primaryMap[_key] += 1
 							}
 						}
 						_primary := strings.Join(info.PrimaryKeys, ",")
 						primary = &_primary // just not nil
+						primaryKeys = info.PrimaryKeys
 					case "serial":
 						if info.Kind == "bigint" {
 							info.Kind = "bigserial"
@@ -347,6 +356,17 @@ func structModelInfo(st interface{}, src *[]*FieldInfo, primary *string) (res []
 		}
 	default:
 		break
+	}
+	// 补充其它字段的主键信息
+	if len(primaryKeys) > 0 {
+		for _, v := range res {
+			if v.Primary == false {
+				v.PrimaryKeys = primaryKeys
+				if primaryMap[v.Name] > 0 {
+					v.AllowNull = false
+				}
+			}
+		}
 	}
 	return
 }

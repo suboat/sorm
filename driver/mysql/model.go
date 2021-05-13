@@ -221,7 +221,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			cmdAdd = fmt.Sprintf("`%s` %s", f.Name, f.Kind)
 			cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
 		)
-		if f.Primary {
+		if f.AllowNull == false {
 			// mysql8 Error 1171: All parts of a PRIMARY KEY must be NOT NULL;
 			cmdDef = fmt.Sprintf(`DEFAULT '%v'`, f.DefaultVal)
 		}
