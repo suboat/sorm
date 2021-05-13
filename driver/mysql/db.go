@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql" // 驱动包
 	"github.com/jmoiron/sqlx"
@@ -47,6 +48,8 @@ type DatabaseSQL struct {
 	ArgConn *ArgConn
 	DB      *sqlx.DB
 	log     orm.Logger
+	lock    sync.RWMutex
+	version string
 }
 
 //
@@ -126,9 +129,29 @@ func (db *DatabaseSQL) String() string {
 	return db.DB.DriverName()
 }
 
-// DriverName 数据库驱动名称
+// 数据库驱动名称
 func (db *DatabaseSQL) DriverName() string {
 	return db.DB.DriverName()
+}
+
+//
+func (db *DatabaseSQL) Version() string {
+	if len(db.version) == 0 {
+		db.lock.Lock()
+		defer db.lock.Unlock()
+		var version string
+		if _err := db.DB.Get(&version, `SELECT VERSION()`); _err == nil {
+			if strings.Contains(strings.ToLower(version), DbVerMaria) {
+				version = DbVerMaria
+			} else {
+				version = DbVerMysql
+			}
+		} else {
+			version = DbVerMysql
+		}
+		db.version = version
+	}
+	return db.version
 }
 
 // Reset 初始或重设数据库连接
