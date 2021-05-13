@@ -3,7 +3,6 @@ package mysql
 import (
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/log"
-	"time"
 
 	"database/sql"
 	"encoding/json"
@@ -346,33 +345,8 @@ func (ob *Objects) create(ex execer, insert interface{}) (err error) {
 
 	// Error 1292: Incorrect datetime value: '0000-00-00' for column
 	if ob.Model.DatabaseSQL.Version() == DbVerMysql {
-		var (
-			stVal        = reflect.Indirect(reflect.ValueOf(insert))
-			stKind       = stVal.Kind()
-			stType       = stVal.Type()
-			offset int64 = -60 * 60 * 24
-		)
-		if stKind != reflect.Struct {
+		if err = PubTimeFill(insert); err != nil {
 			return
-		}
-		// 寻找时间值
-		for i := 0; i < stType.NumField(); i++ {
-			fVal := stVal.Field(i)
-			switch v := fVal.Interface().(type) {
-			case *time.Time:
-				// 更新0值
-				if v != nil && v.Unix() < offset {
-					*v = time.Unix(offset, 0)
-				}
-				break
-			case time.Time:
-				// 更新0值
-				if v.Unix() < offset {
-					var _v = fVal.Addr().Interface().(*time.Time)
-					*_v = time.Unix(offset, 0)
-				}
-				break
-			}
 		}
 	}
 
