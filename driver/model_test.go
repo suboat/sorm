@@ -154,13 +154,9 @@ func Test_ModelEnsure(t *testing.T) {
 	w0.Meta.Company = "suboat"
 	w0.Bugs = &w0.Echo
 	w0.ApplyTime = &time.Time{}
-	if err = m0.Objects().Create(w0); err != nil {
-		t.Fatal(err)
-	}
-	if err = m1.Objects().With(
-		&orm.ArgObjects{LogLevel: orm.LevelDebug}).Create(w0); err != nil {
-		t.Fatal(err)
-	}
+
+	as.Nil(m0.Objects().Create(w0))
+	as.Nil(m1.Objects().With(&orm.ArgObjects{LogLevel: orm.LevelDebug}).Create(w0))
 	w1 := new(Programmer)
 	*w1 = *w0
 	w1.UID = types.NewUID()
@@ -169,15 +165,15 @@ func Test_ModelEnsure(t *testing.T) {
 	if err = m0.With(&orm.ArgModel{LogLevel: orm.LevelFatal}).Objects().Create(w1); err == nil {
 		// firstName-lastName已联合唯一, 此处应该报错
 		t.Fatalf(`firstName-lastName unique index fail`)
+		return
 	} else {
 		w1.FirstName = w1.FirstName + "-copy"
 		if err = m0.Objects().Create(w1); err != nil {
 			t.Fatal(err)
+			return
 		}
 	}
-	if err = m1.Objects().Create(w1); err != nil {
-		t.Fatal(err)
-	}
+	as.Nil(m1.Objects().Create(w1))
 
 	// 读记录
 	r0 := new(Programmer)
@@ -224,21 +220,25 @@ func Test_ModelEnsure(t *testing.T) {
 		t.Fatalf(`"%v" write and read diff: 
 %s
 %s`, db, orm.JSONMust(w0), orm.JSONMust(r0))
+		return
 	}
 	if orm.JSONMust(w0) != orm.JSONMust(r1) {
 		t.Fatalf(`"%v" write and read diff: 
 %s
 %s`, db, orm.JSONMust(w0), orm.JSONMust(r1))
+		return
 	}
 	if orm.JSONMust(w1) != orm.JSONMust(r2) {
 		t.Fatalf(`"%v" write and read diff: 
 %s
 %s`, db, orm.JSONMust(w1), orm.JSONMust(r2))
+		return
 	}
 	if orm.JSONMust(w1) != orm.JSONMust(r3) {
 		t.Fatalf(`"%v" write and read diff: 
 %s
 %s`, db, orm.JSONMust(w1), orm.JSONMust(r3))
+		return
 	}
 
 	// log
