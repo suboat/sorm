@@ -166,7 +166,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			f.DefaultVal = "0"
 		case "json":
 			// TODO: maria and mysql<5.7
-			if m.DatabaseSQL.DriverName() == DbVerMaria {
+			if m.DatabaseSQL.Version() == DbVerMaria {
 				// maria not support json type
 				f.Kind = "longtext"
 			} else {
@@ -221,6 +221,10 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			cmdAdd = fmt.Sprintf("`%s` %s", f.Name, f.Kind)
 			cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
 		)
+		if f.Primary {
+			// mysql8 Error 1171: All parts of a PRIMARY KEY must be NOT NULL;
+			cmdDef = fmt.Sprintf(`DEFAULT '%v'`, f.DefaultVal)
+		}
 		switch f.Kind {
 		case "serial":
 			if tableExist == 1 {
@@ -253,6 +257,10 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 			if f.Size > 0 {
 				cmdAdd = fmt.Sprintf("`%s` %s(%d)", f.Name, f.Kind, f.Size)
 			}
+			if f.Kind == "blob" && m.DatabaseSQL.Version() == DbVerMysql {
+				// mysql8 Error 1101: BLOB, TEXT, GEOMETRY or JSON column 'password' can't have a default value
+				cmdDef = fmt.Sprintf(`NULL`)
+			}
 		case "decimal", "numeric":
 			if f.Size > 0 {
 				if f.Precision >= 0 {
@@ -266,7 +274,7 @@ func (m *Model) EnsureColumn(st interface{}) (err error) {
 		case "text", "longtext", "json":
 			// mariaDB可以设置默认值,mysql不能
 			cmdAdd = fmt.Sprintf("`%s` %s", f.Name, f.Kind)
-			if m.DatabaseSQL.DriverName() == DbVerMaria {
+			if m.DatabaseSQL.Version() == DbVerMaria {
 				cmdDef = fmt.Sprintf(`DEFAULT '%v' NULL`, f.DefaultVal)
 			} else {
 				cmdDef = fmt.Sprintf(`NULL`)
