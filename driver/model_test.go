@@ -4,6 +4,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/types"
+	"strings"
 
 	"testing"
 
@@ -243,6 +244,69 @@ func Test_ModelEnsure(t *testing.T) {
 
 	// log
 	t.Logf(`"%v" PASS %s`, db, orm.JSONMust(r0))
+
+	// virtual
+	testModelVirtual(t)
+}
+
+func testModelVirtual(t *testing.T) {
+	as := require.New(t)
+	var (
+		err  error
+		db   = testGetDB()
+		tbl0 = "test_Eukaryota"
+		tbl1 = "test_Relation"
+		tbs1 = struct {
+			ID  int    `sorm:"index" json:"id"`
+			Msg string `sorm:"size(255);index" json:"msg"`
+		}{
+			ID:  1,
+			Msg: "message from relation",
+		}
+		m0 = db.Model(tbl1)
+		//
+		m1 = db.ModelWith(tbl0, &orm.ArgModel{
+			Sql: fmt.Sprintf(
+				`select tb1.id,taxonomyId,chromosomes,speciesNumber,individualCells,msg from %s tb1 LEFT JOIN %s tb2 ON tb2.id = tb1.id`,
+				strings.ToLower(tbl0),
+				strings.ToLower(tbl1)),
+			LogLevel: orm.LevelDebug,
+		})
+	)
+	if err = m0.Drop(); err != nil {
+		t.Fatal(err)
+	}
+	if err = m0.Ensure(tbs1); err != nil {
+		t.Fatal(err)
+	} else if err = m0.Objects().Create(tbs1); err != nil {
+		t.Fatal(err)
+	}
+	//
+	if true {
+		var d1 = new(Eukaryota)
+		as.Nil(m1.Objects().Filter(orm.M{"id": tbs1.ID}).One(d1))
+		t.Logf(`[virtual-table] one %d`, d1.SpeciesNumber)
+	}
+	if true {
+		type JoinObj struct {
+			Eukaryota
+			ID  int
+			Msg *string
+		}
+		var (
+			dl1 []*Eukaryota
+			dl2 []*JoinObj
+		)
+		as.Nil(m1.Objects().Limit(10).All(&dl1))
+		t.Logf(`[virtual-table] all1 %d`, len(dl1))
+		as.Nil(m1.Objects().Limit(10).All(&dl2))
+		t.Logf(`[virtual-table] all2 %d`, len(dl2))
+		for _, v := range dl2 {
+			if v.Msg != nil {
+				t.Logf(`[virtual-table] match #%d %s`, v.ID, *v.Msg)
+			}
+		}
+	}
 }
 
 // 压力测试:建表删表

@@ -10,6 +10,8 @@ type ArgModel struct {
 	TransTimeout time.Duration
 	// 日志级别
 	LogLevel int
+	// 自定义表的SQL语句
+	Sql string
 }
 
 // Database 数据库对象
