@@ -191,8 +191,8 @@ func (ob *Objects) all(ex execer, result interface{}) (err error) {
 	var _sql string
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
-		_sql = fmt.Sprintf(`SELECT * FROM "%s" %s %s`,
-			ob.Model.TableName, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		_sql = fmt.Sprintf(`SELECT * FROM %s %s %s`,
+			ob.Model.GetTable(), ob.cacheQueryOrder, ob.cacheQueryLimit)
 		if err = ex.Select(result, _sql); err != nil {
 			ob.log.Errorf(`[sql-all] %s err: %v`, _sql, err)
 		}
@@ -206,8 +206,8 @@ func (ob *Objects) all(ex execer, result interface{}) (err error) {
 			}
 		}
 		// select query
-		_sql = fmt.Sprintf(`SELECT * FROM "%s" WHERE %s %s %s`,
-			ob.Model.TableName, ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		_sql = fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s`,
+			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
 		if err = ex.Select(result, _sql, ob.cacheQueryValues...); err != nil {
 			ob.log.Errorf(`[sql-all] %s VAL: %v err: %v`, _sql, ob.cacheQueryValues, err)
 		}
@@ -256,13 +256,13 @@ func (ob *Objects) countDo(ex execer) (num int, err error) {
 	var sqlCmd string
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM [%s]`, ob.Model.TableName)
+		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM [%s]`, ob.Model.GetTable())
 		if err = ex.Get(&num, sqlCmd); err != nil {
 			ob.log.Errorf(`[sql-count] %s err: %v`, sqlCmd, err)
 		}
 	} else {
 		// count have not limit
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM [%s] WHERE %s`, ob.Model.TableName, ob.cacheQueryWhere)
+		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM [%s] WHERE %s`, ob.Model.GetTable(), ob.cacheQueryWhere)
 		if err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...); err != nil {
 			ob.log.Errorf(`[sql-count] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
 		}
@@ -295,8 +295,8 @@ func (ob *Objects) TOne(result interface{}, _t orm.Trans) (err error) {
 			return orm.ErrTransInvalid
 		}
 		//
-		sqlCmd := fmt.Sprintf(`SELECT * FROM "%s" WHERE %s %s %s`,
-			ob.Model.TableName, ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		sqlCmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s`,
+			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
 		err = t.Get(result, sqlCmd, ob.cacheQueryValues...)
 		if err != nil {
 			ob.log.Errorf(`[sql-one-t] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
@@ -318,8 +318,8 @@ func (ob *Objects) One(result interface{}) (err error) {
 		return
 	}
 	if ob.count == 1 {
-		sqlCmd := fmt.Sprintf(`SELECT * FROM "%s" WHERE %s %s %s`,
-			ob.Model.TableName, ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		sqlCmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s`,
+			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
 		err = ob.Model.DatabaseSQL.DB.Get(result, sqlCmd, ob.cacheQueryValues...)
 		if err != nil {
 			ob.log.Errorf(`[sql-one] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
@@ -414,7 +414,7 @@ func (ob *Objects) update(ex execer, record interface{}) (err error) {
 				m[k] = v
 			}
 
-			query = fmt.Sprintf(`UPDATE "%s" SET %s`, ob.Model.TableName, strings.Join(setLis, ", "))
+			query = fmt.Sprintf(`UPDATE %s SET %s`, ob.Model.GetTable(), strings.Join(setLis, ", "))
 
 			if len(ob.cacheQueryWhere) == 0 {
 				// update one or more or nil
@@ -526,12 +526,12 @@ func (ob *Objects) delete(ex execer) (err error) {
 	sqlCmd := ``
 	if len(ob.cacheQueryWhere) == 0 {
 		// delete all record
-		sqlCmd = fmt.Sprintf(`DELETE FROM "%s"`, ob.Model.TableName)
+		sqlCmd = fmt.Sprintf(`DELETE FROM %s`, ob.Model.GetTable())
 		if ob.Result, err = ex.Exec(sqlCmd); err != nil {
 			ob.log.Errorf(`[sql-delete] %s err: %v`, sqlCmd, err)
 		}
 	} else {
-		sqlCmd = fmt.Sprintf(`DELETE FROM "%s" WHERE %s`, ob.Model.TableName, ob.cacheQueryWhere)
+		sqlCmd = fmt.Sprintf(`DELETE FROM %s WHERE %s`, ob.Model.GetTable(), ob.cacheQueryWhere)
 		if ob.Result, err = ex.Exec(sqlCmd, ob.cacheQueryValues...); err != nil {
 			ob.log.Errorf(`[sql-delete] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
 		}
@@ -676,7 +676,7 @@ func (ob *Objects) TLockUpdate(t orm.Trans) (err error) {
 		err = orm.ErrTransLockWholeTable
 		return
 	}
-	sqlCmd = fmt.Sprintf(`SELECT * FROM "%s" WHERE %s FOR UPDATE`, ob.Model.TableName, ob.cacheQueryWhere)
+	sqlCmd = fmt.Sprintf(`SELECT * FROM %s WHERE %s FOR UPDATE`, ob.Model.GetTable(), ob.cacheQueryWhere)
 
 	if ob.Result, err = t.Exec(sqlCmd, ob.cacheQueryValues...); err != nil {
 		ob.log.Errorf(`[sql-lock-t] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)

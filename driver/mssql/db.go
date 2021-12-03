@@ -46,6 +46,7 @@ type ArgConn struct {
 // DatabaseSQL 数据库
 type DatabaseSQL struct {
 	ArgConn *ArgConn
+	Unsafe  bool
 	DB      *sqlx.DB
 	log     orm.Logger
 }
@@ -146,9 +147,10 @@ func (db *DatabaseSQL) Reset() (err error) {
 	if err = db.Close(); err != nil {
 		return
 	}
+	db.Unsafe = CfgDbUnsafe
 	if db.DB, err = sqlx.Connect(db.ArgConn.Driver, db.ArgConn.String()); err != nil {
 		return
-	} else if CfgDbUnsafe {
+	} else if db.Unsafe {
 		db.DB = db.DB.Unsafe()
 	}
 	// version
@@ -185,6 +187,13 @@ func (db *DatabaseSQL) ModelWith(s string, arg *orm.ArgModel) orm.Model {
 	}
 	if arg != nil && arg.LogLevel > 0 && m.log != nil {
 		m.log.SetLevel(arg.LogLevel)
+		if len(arg.Sql) > 0 {
+			m.VirtualSQL = arg.Sql
+			if !m.DatabaseSQL.Unsafe {
+				m.DatabaseSQL.DB = m.DatabaseSQL.DB.Unsafe()
+				m.DatabaseSQL.Unsafe = true
+			}
+		}
 	}
 	return m
 }

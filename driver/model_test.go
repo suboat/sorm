@@ -18,6 +18,7 @@ import (
 
 // Eukaryota 真核生物
 type Eukaryota struct {
+	ID              int64        `sorm:"primary;serial" bson:"-" json:"id"`        // 递增ID
 	TaxonomyID      int          `sorm:"index" json:"taxonomyId"`                  // 物种编号 9606
 	Chromosomes     int32        `sorm:"index" json:"chromosomes"`                 // 染色体数目
 	SpeciesNumber   uint64       `sorm:"index" json:"speciesNumber"`               // 全球物种数 6,000,000,000
@@ -46,9 +47,8 @@ type Primates struct {
 
 // Homo 智人
 type Homo struct {
-	ID       int64  `sorm:"serial" bson:"-" json:"id"`   // 递增ID
-	UID      string `sorm:"size(36);primary" json:"uid"` // 唯一ID
-	Key      string `sorm:"size(36);unique" json:"key"`  // 唯一Key
+	UID      string `sorm:"size(36);unique" json:"uid"` // 唯一ID
+	Key      string `sorm:"size(36);unique" json:"key"` // 唯一Key
 	Primates `bson:",inline"`
 	Birthday time.Time `sorm:"index" json:"birthday"` // 生日
 }
@@ -163,17 +163,19 @@ func Test_ModelEnsure(t *testing.T) {
 	w1.UID = types.NewUID()
 	w1.Key = types.NewAccession()
 	w1.Birthday = time.Now().Truncate(time.Second)
-	if err = m0.With(&orm.ArgModel{LogLevel: orm.LevelFatal}).Objects().Create(w1); err == nil {
-		// firstName-lastName已联合唯一, 此处应该报错
-		t.Fatalf(`firstName-lastName unique index fail`)
+
+	w1.FirstName = w1.FirstName + "-copy"
+	if err = m0.Objects().Create(w1); err != nil {
+		t.Fatal(err)
 		return
 	} else {
-		w1.FirstName = w1.FirstName + "-copy"
-		if err = m0.Objects().Create(w1); err != nil {
-			t.Fatal(err)
+		if err = m0.With(&orm.ArgModel{LogLevel: orm.LevelFatal}).Objects().Create(w1); err == nil {
+			// firstName-lastName已联合唯一, 此处应该报错
+			t.Fatalf(`firstName-lastName unique index fail`)
 			return
 		}
 	}
+
 	as.Nil(m1.Objects().Create(w1))
 
 	// 读记录
@@ -187,12 +189,10 @@ func Test_ModelEnsure(t *testing.T) {
 	as.Nil(m1.Objects().Filter(orm.M{"key": w1.Key}).One(r3))
 	as.Nil(m0.Objects().Filter(orm.M{"key": w1.Key}).One(r2))
 	// 检测自增序列
-	if db.DriverName() != orm.DriverNameSQLite {
-		as.Equal(r0.ID, int64(1))
-		as.Equal(r1.ID, int64(1))
-		as.Equal(r2.ID, int64(3))
-		as.Equal(r3.ID, int64(2))
-	}
+	as.Equal(r0.ID, int64(1))
+	as.Equal(r1.ID, int64(1))
+	as.Equal(r2.ID, int64(2))
+	as.Equal(r3.ID, int64(2))
 
 	// 比较
 	if w0.Birthday.Equal(r0.Birthday) {
@@ -212,7 +212,7 @@ func Test_ModelEnsure(t *testing.T) {
 		// 递增就正确
 		w0.ID = r0.ID
 	}
-	if r2.ID == 3 && r3.ID == 2 && w1.ID == 0 {
+	if r2.ID == 2 && r3.ID == 2 && w1.ID == 0 {
 		// 递增并且跳过2就正确
 		r2.ID = 0
 		r3.ID = 0
@@ -290,7 +290,6 @@ func testModelVirtual(t *testing.T) {
 	if true {
 		type JoinObj struct {
 			Eukaryota
-			ID  int
 			Msg *string
 		}
 		var (

@@ -20,6 +20,7 @@ type Model struct {
 	// sql
 	DatabaseSQL *DatabaseSQL
 	Result      sql.Result
+	VirtualSQL  string
 	// sql contig of objects
 	ContigInsert       string
 	ContigUpdate       string
@@ -90,6 +91,16 @@ func (m *Model) ObjectsWith(arg *orm.ArgObjects) orm.Objects {
 		}
 	}
 	return ob
+}
+
+// get
+func (m *Model) GetTable() (ret string) {
+	if len(m.VirtualSQL) > 0 {
+		ret = fmt.Sprintf("(%s) tb1", m.VirtualSQL)
+	} else {
+		ret = fmt.Sprintf("`%s`", m.TableName)
+	}
+	return
 }
 
 // Drop table
@@ -610,6 +621,14 @@ func (m *Model) With(arg *orm.ArgModel) (ret orm.Model) {
 	if arg != nil {
 		if arg.LogLevel > 0 {
 			r.log.SetLevel(arg.LogLevel)
+		}
+		// FIXME: 可否不使用unsafe
+		if len(arg.Sql) > 0 {
+			m.VirtualSQL = arg.Sql
+			if !m.DatabaseSQL.Unsafe {
+				m.DatabaseSQL.DB = m.DatabaseSQL.DB.Unsafe()
+				m.DatabaseSQL.Unsafe = true
+			}
 		}
 	}
 	return r
