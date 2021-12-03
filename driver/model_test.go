@@ -300,6 +300,10 @@ func testModelVirtual(t *testing.T) {
 		t.Logf(`[virtual-table] all1 %d`, len(dl1))
 		as.Nil(m1.Objects().Limit(10).All(&dl2))
 		t.Logf(`[virtual-table] all2 %d`, len(dl2))
+
+		as.Equal(2, len(dl2))
+		as.NotNil(dl2[0].Msg)
+		as.Equal(tbs1.Msg, *dl2[0].Msg)
 		for _, v := range dl2 {
 			if v.Msg != nil {
 				t.Logf(`[virtual-table] match #%d %s`, v.ID, *v.Msg)
