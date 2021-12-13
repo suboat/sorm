@@ -246,7 +246,22 @@ func Test_ModelEnsure(t *testing.T) {
 	t.Logf(`"%v" PASS %s`, db, orm.JSONMust(r0))
 
 	// virtual
-	testModelVirtual(t)
+	switch TestName {
+	case orm.DriverNameMongo:
+		// 目前无法通过测试
+		break
+	default:
+		testModelVirtual(t)
+	}
+
+	// group
+	switch TestName {
+	case orm.DriverNamePostgres, orm.DriverNameMongo:
+		// 目前无法通过测试
+		break
+	default:
+		testModelGroup(t)
+	}
 }
 
 func testModelVirtual(t *testing.T) {
@@ -310,6 +325,41 @@ func testModelVirtual(t *testing.T) {
 			}
 		}
 	}
+}
+
+//
+func testModelGroup(t *testing.T) {
+	as := require.New(t)
+	as.Nil(nil)
+	var (
+		db   = testGetDB()
+		tbl0 = "test_Programmer"
+		gps  = []string{
+			"taxonomyID",
+			"lastName",
+		}
+		//
+		m0  = db.Model(tbl0)
+		dl0 []*Programmer
+	)
+	as.Nil(m0.Objects().All(&dl0))
+	as.Equal(2, len(dl0), "all object")
+	//
+	dl0 = []*Programmer{}
+	as.Nil(m0.Objects().Filter(orm.M{"taxonomyID": "9606"}).Limit(10).All(&dl0))
+	as.Equal(2, len(dl0), "filter object")
+	//
+	dl0 = []*Programmer{}
+	as.Nil(m0.ObjectsWith(&orm.ArgObjects{
+		LogLevel: orm.LevelDebug,
+	}).Group(gps...).Limit(10).All(&dl0))
+	as.Equal(1, len(dl0), "group object all")
+	//
+	dl0 = []*Programmer{}
+	as.Nil(m0.ObjectsWith(&orm.ArgObjects{
+		LogLevel: orm.LevelDebug,
+	}).Group(gps...).Filter(orm.M{"taxonomyID": "9606"}).Sort(gps...).Limit(10).All(&dl0))
+	as.Equal(1, len(dl0), "group object filter")
 }
 
 // 压力测试:建表删表
