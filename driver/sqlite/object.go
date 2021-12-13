@@ -3,6 +3,7 @@ package sqlite
 import (
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/log"
+	"github.com/suboat/sorm/songo"
 
 	"database/sql"
 	"encoding/json"
@@ -26,6 +27,7 @@ type Objects struct {
 	// filter
 	queryM orm.M    // store filter regular
 	sorts  []string // sort
+	group  []string // group
 
 	// cache: Query
 	cacheQueryClean  bool          // if true, update cacheQuery* mandatorily next time
@@ -34,6 +36,7 @@ type Objects struct {
 	cacheQueryValues []interface{} // cache query value list
 	cacheQueryLimit  string        // sql contig from "limit"
 	cacheQueryOrder  string        // sql contig from "order by"
+	cacheQueryGroup  string        // sql contig from "group by"
 }
 
 //
@@ -86,7 +89,7 @@ func (ob *Objects) Skip(n int) orm.Objects {
 // Sort 用字段排序
 func (ob *Objects) Sort(fields ...string) orm.Objects {
 	for _, s := range fields {
-		s = strings.ToLower(s)
+		s = songo.SafeField(s)
 		order := `ASC`
 		if len(s) == 0 {
 			continue
@@ -104,7 +107,7 @@ func (ob *Objects) Sort(fields ...string) orm.Objects {
 		if len(ob.cacheQueryOrder) == 0 {
 			ob.cacheQueryOrder = fmt.Sprintf(`ORDER BY "%s" %s`, s, order)
 		} else {
-			ob.cacheQueryOrder += fmt.Sprintf(`, "%s" %s`, s, order)
+			ob.cacheQueryOrder += fmt.Sprintf(`,"%s" %s`, s, order)
 		}
 	}
 	ob.sorts = fields
@@ -113,7 +116,15 @@ func (ob *Objects) Sort(fields ...string) orm.Objects {
 
 // 去重
 func (ob *Objects) Group(fields ...string) orm.Objects {
-	ob.log.Debugf(`[group-not-implement]`)
+	for _, s := range fields {
+		s = songo.SafeField(s)
+		if len(ob.cacheQueryGroup) == 0 {
+			ob.cacheQueryGroup = fmt.Sprintf(`GROUP BY "%s"`, s)
+		} else {
+			ob.cacheQueryGroup += fmt.Sprintf(`,"%s"`, s)
+		}
+	}
+	ob.group = append(ob.group, fields...)
 	return ob
 }
 
@@ -160,6 +171,10 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	if ob.sorts != nil {
 		mt.Sort = ob.sorts
 	}
+	// group
+	if ob.group != nil {
+		mt.Group = ob.group
+	}
 	return
 }
 
@@ -198,15 +213,17 @@ func (ob *Objects) all(ex execer, result interface{}) (err error) {
 	var _sql string
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
-		_sql = fmt.Sprintf(`SELECT * FROM %s %s %s`,
-			ob.Model.GetTable(), ob.cacheQueryOrder, ob.cacheQueryLimit)
+		_sql = fmt.Sprintf(`SELECT * FROM %s %s %s %s`,
+			ob.Model.GetTable(), ob.cacheQueryGroup, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		_sql = strings.ReplaceAll(_sql, "  ", " ")
 		if err = ex.Select(result, _sql); err != nil {
 			ob.log.Errorf(`[sql-all] %s err: %v`, _sql, err)
 		}
 	} else {
 		// select query
-		_sql = fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s`,
-			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		_sql = fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s %s`,
+			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryGroup, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		_sql = strings.ReplaceAll(_sql, "  ", " ")
 		if err = ex.Select(result, _sql, ob.cacheQueryValues...); err != nil {
 			ob.log.Errorf(`[sql-all] %s VAL: %v err: %v`, _sql, ob.cacheQueryValues, err)
 		}
