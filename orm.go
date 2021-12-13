@@ -96,10 +96,11 @@ type Meta struct {
 	Limit int `json:"limit"` // 同sql里的 limit
 	Page  int `json:"page"`  // 0起始.直接告知当前页码,免去通过skip与limit计算
 	// 可选信息
-	Skip int         `json:"skip,omitempty"` // 可选，不常用. 同sql里的 skip
-	Num  int         `json:"num,omitempty"`  // 可选信息.直接告知此次返回的数据条数,免去读取数据字段
-	Key  interface{} `json:"key,omitempty"`  // 可选信息.刚才用户提交的搜索信息
-	Sort interface{} `json:"sort,omitempty"` // 可选信息.刚才用户提交的排序信息
+	Skip  int         `json:"skip,omitempty"`  // 可选，不常用. 同sql里的 skip
+	Num   int         `json:"num,omitempty"`   // 可选信息.直接告知此次返回的数据条数,免去读取数据字段
+	Key   interface{} `json:"key,omitempty"`   // 可选信息.刚才用户提交的搜索信息
+	Sort  interface{} `json:"sort,omitempty"`  // 可选信息.刚才用户提交的排序信息
+	Group interface{} `json:"group,omitempty"` // 可选信息.刚才用户提交的排序信息
 }
 
 // Logger 日志输出
