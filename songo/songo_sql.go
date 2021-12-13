@@ -57,6 +57,12 @@ func parserSQLUnit(k string, v interface{}, idx int, sep string) (sql string, va
 		}
 	}
 
+	// 解析后的key已经是字段名,防注入检测
+	if SafeField(k) != k {
+		err = ErrSongoMapKeyInvalid
+		return
+	}
+
 	// val:尝试从val中解析比较符
 	if len(tag) == 0 {
 		switch _val := v.(type) {
