@@ -170,6 +170,10 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	if ob.sorts != nil {
 		mt.Sort = ob.sorts
 	}
+	// group
+	if ob.group != nil {
+		mt.Group = ob.group
+	}
 	return
 }
 
