@@ -136,6 +136,12 @@ func (o *Objects) Sort(fields ...string) orm.Objects {
 	return o
 }
 
+// 去重
+func (o *Objects) Group(fields ...string) orm.Objects {
+	o.log.Debugf(`[group-not-implement]`)
+	return o
+}
+
 // Meta 摘要
 func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	if ob.err != nil {

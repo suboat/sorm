@@ -12,6 +12,7 @@ type Objects interface {
 	Limit(int) Objects               // 限制
 	Skip(int) Objects                // 跳过
 	Sort(...string) Objects          // 排序
+	Group(...string) Objects         // 去重
 	Meta() (*Meta, error)            // 摘要信息
 	All(result interface{}) error    // 保存搜索结果至
 	One(result interface{}) error    // 取一条记录

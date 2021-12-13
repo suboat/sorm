@@ -111,6 +111,12 @@ func (ob *Objects) Sort(fields ...string) orm.Objects {
 	return ob
 }
 
+// 去重
+func (ob *Objects) Group(fields ...string) orm.Objects {
+	ob.log.Debugf(`[group-not-implement]`)
+	return ob
+}
+
 // Meta 信息
 func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	// may the 'limit' operating front, recount cache.
