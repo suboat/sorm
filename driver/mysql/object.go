@@ -116,7 +116,6 @@ func (ob *Objects) Sort(fields ...string) orm.Objects {
 
 // 去重
 func (ob *Objects) Group(fields ...string) orm.Objects {
-	ob.log.Debugf(`[group-not-implement]`)
 	for _, s := range fields {
 		s = songo.SafeField(s)
 		if len(ob.cacheQueryGroup) == 0 {
