@@ -124,6 +124,7 @@ func (ob *Objects) Group(fields ...string) orm.Objects {
 			ob.cacheQueryGroup += fmt.Sprintf(",`%s`", s)
 		}
 	}
+	ob.group = fields
 	return ob
 }
 
