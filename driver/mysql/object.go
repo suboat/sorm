@@ -110,7 +110,7 @@ func (ob *Objects) Sort(fields ...string) orm.Objects {
 			ob.cacheQueryOrder += fmt.Sprintf(",`%s` %s", s, order)
 		}
 	}
-	ob.sorts = fields
+	ob.sorts = append(ob.sorts, fields...)
 	return ob
 }
 
@@ -124,7 +124,7 @@ func (ob *Objects) Group(fields ...string) orm.Objects {
 			ob.cacheQueryGroup += fmt.Sprintf(",`%s`", s)
 		}
 	}
-	ob.group = fields
+	ob.group = append(ob.group, fields...)
 	return ob
 }
 
