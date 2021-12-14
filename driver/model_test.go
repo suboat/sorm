@@ -4,15 +4,14 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/suboat/sorm"
 	"github.com/suboat/sorm/types"
-	"strings"
-
-	"testing"
 
 	"database/sql/driver"
 	"encoding/json"
 	"fmt"
 	"math/big"
 	"math/rand"
+	"strings"
+	"testing"
 	"time"
 )
 
@@ -256,7 +255,7 @@ func Test_ModelEnsure(t *testing.T) {
 
 	// group
 	switch TestName {
-	case orm.DriverNamePostgres, orm.DriverNameMongo:
+	case orm.DriverNameMongo:
 		// 目前无法通过测试
 		break
 	default:
