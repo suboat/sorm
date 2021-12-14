@@ -40,7 +40,7 @@ func testGetDB() orm.Database {
 		TestName = v
 	default:
 		// 默认测试数据库
-		TestName = orm.DriverNamePostgres
+		TestName = orm.DriverNameMysql
 	}
 	if testDB != nil {
 		return testDB
