@@ -5,7 +5,7 @@ require (
 	github.com/fastly/go-utils v0.0.0-20180712184237-d95a45783239 // indirect
 	github.com/fatih/color v1.9.0
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
-	github.com/go-sql-driver/mysql v1.5.0
+	github.com/go-sql-driver/mysql v1.6.0
 	github.com/jehiah/go-strftime v0.0.0-20171201141054-1d33003b3869 // indirect
 	github.com/jmoiron/sqlx v1.3.4
 	github.com/jonboulle/clockwork v0.2.1 // indirect
