@@ -269,19 +269,31 @@ func (ob *Objects) countDo(ex execer) (num int, err error) {
 	if err = ob.updateQuery(); err != nil {
 		return
 	}
-	var sqlCmd string
-	if len(ob.cacheQueryWhere) == 0 {
-		// select all
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM %s`, ob.Model.GetTable())
-		if err = ex.Get(&num, sqlCmd); err != nil {
-			ob.log.Errorf(`[sql-count] %s err: %v`, sqlCmd, err)
-		}
+	var (
+		sqlCmd string
+		where  = ""
+		fields = "*"
+	)
+	if len(ob.cacheQueryWhere) > 0 {
+		where = fmt.Sprintf("WHERE %s", ob.cacheQueryWhere)
+	}
+	if len(ob.cacheQueryGroup) > 0 {
+		fields = strings.ReplaceAll(ob.cacheQueryGroup, "GROUP BY", "DISTINCT")
+	}
+	// count sql
+	if len(ob.group) > 1 {
+		// sqlite不支持count(DISTINCT a,b)
+		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM (SELECT %s FROM %s %s)`,
+			fields, ob.Model.GetTable(), where)
 	} else {
-		// count have not limit
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, ob.Model.GetTable(), ob.cacheQueryWhere)
-		if err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...); err != nil {
-			ob.log.Errorf(`[sql-count] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
-		}
+		// 普通select
+		sqlCmd = fmt.Sprintf(`SELECT count(%s) FROM %s %s`,
+			fields, ob.Model.GetTable(), where)
+	}
+	//
+	sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
+	if err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...); err != nil {
+		ob.log.Errorf(`[sql-count] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
 	}
 	if err == nil {
 		ob.count = num
