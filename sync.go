@@ -86,6 +86,9 @@ func StructModelInfo(st interface{}) (res []*FieldInfo, err error) {
 	res = []*FieldInfo{}
 	return structModelInfo(st, &res, nil)
 }
+func StructModelInfoByDest(dest interface{}) (res []*FieldInfo, err error) {
+	return StructModelInfo(ReflectElemNew(dest))
+}
 
 // StructModelInfoNoPrimary 结构体提取model信息: 将主键描述解读为unique, 适用于不支持主键定义的数据库驱动使用
 func StructModelInfoNoPrimary(st interface{}) (res []*FieldInfo, err error) {

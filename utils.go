@@ -5,6 +5,7 @@ import (
 
 	"encoding/json"
 	"fmt"
+	"reflect"
 	"regexp"
 	"strings"
 	"time"
@@ -152,6 +153,24 @@ func JSONMust(inf interface{}) (r string) {
 		}
 	}
 	return
+}
+
+// 解析并创建一个实例
+func ReflectElemNew(a interface{}) (ret interface{}) {
+	if t := reflectElemType(a); t != nil {
+		ret = reflect.New(t).Interface()
+	}
+	return
+}
+func reflectElemType(a interface{}) reflect.Type {
+	for t := reflect.TypeOf(a); ; {
+		switch t.Kind() {
+		case reflect.Ptr, reflect.Slice:
+			t = t.Elem()
+		default:
+			return t
+		}
+	}
 }
 
 // init
