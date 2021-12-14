@@ -624,13 +624,8 @@ func (m *Model) With(arg *orm.ArgModel) (ret orm.Model) {
 		if arg.LogLevel > 0 {
 			r.log.SetLevel(arg.LogLevel)
 		}
-		// FIXME: 可否不使用unsafe
 		if len(arg.Sql) > 0 {
 			m.VirtualSQL = arg.Sql
-			if !m.DatabaseSQL.Unsafe {
-				m.DatabaseSQL.DB = m.DatabaseSQL.DB.Unsafe()
-				m.DatabaseSQL.Unsafe = true
-			}
 		}
 	}
 	return r

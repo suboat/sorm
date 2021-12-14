@@ -180,10 +180,6 @@ func (db *DatabaseSQL) ModelWith(s string, arg *orm.ArgModel) orm.Model {
 		m.log.SetLevel(arg.LogLevel)
 		if len(arg.Sql) > 0 {
 			m.VirtualSQL = arg.Sql
-			if !m.DatabaseSQL.Unsafe {
-				m.DatabaseSQL.DB = m.DatabaseSQL.DB.Unsafe()
-				m.DatabaseSQL.Unsafe = true
-			}
 		}
 	}
 	return m

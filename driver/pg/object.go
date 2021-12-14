@@ -105,9 +105,9 @@ func (ob *Objects) Sort(fields ...string) orm.Objects {
 			continue
 		}
 		if len(ob.cacheQueryOrder) == 0 {
-			ob.cacheQueryOrder = fmt.Sprintf(`ORDER BY "%s" %s`, s, order)
+			ob.cacheQueryOrder = fmt.Sprintf(`ORDER BY %s %s`, PubFieldWrap(s), order)
 		} else {
-			ob.cacheQueryOrder += fmt.Sprintf(`,"%s" %s`, s, order)
+			ob.cacheQueryOrder += fmt.Sprintf(`,%s %s`, PubFieldWrap(s), order)
 		}
 	}
 	ob.sorts = append(ob.sorts, fields...)
@@ -119,9 +119,9 @@ func (ob *Objects) Group(fields ...string) orm.Objects {
 	for _, s := range fields {
 		s = songo.SafeField(s)
 		if len(ob.cacheQueryGroup) == 0 {
-			ob.cacheQueryGroup = fmt.Sprintf(`GROUP BY "%s"`, s)
+			ob.cacheQueryGroup = fmt.Sprintf(`GROUP BY %s`, PubFieldWrap(s))
 		} else {
-			ob.cacheQueryGroup += fmt.Sprintf(`,"%s"`, s)
+			ob.cacheQueryGroup += fmt.Sprintf(`,%s`, PubFieldWrap(s))
 		}
 	}
 	ob.group = append(ob.group, fields...)
@@ -180,12 +180,6 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 
 // All fetch to
 func (ob *Objects) All(result interface{}) (err error) {
-	if err = ob.updateQuery(); err != nil {
-		return
-	}
-	if ob.limit == 0 {
-		ob.cacheQueryLimit = fmt.Sprintf(`OFFSET %d`, ob.skip)
-	}
 	return ob.all(ob.Model.DatabaseSQL.DB, result)
 }
 
@@ -198,33 +192,45 @@ func (ob *Objects) TAll(result interface{}, _t orm.Trans) (err error) {
 	if t == nil {
 		return orm.ErrTransInvalid
 	}
+	return ob.all(t, result)
+}
+
+// group-by https://stackoverflow.com/questions/1769361/postgresql-group-by-different-from-mysql
+// https://stackoverflow.com/questions/17673457/converting-select-distinct-on-queries-from-postgresql-to-mysql
+func (ob *Objects) all(ex execer, result interface{}) (err error) {
 	if err = ob.updateQuery(); err != nil {
 		return
 	}
 	if ob.limit == 0 {
 		ob.cacheQueryLimit = fmt.Sprintf(`OFFSET %d`, ob.skip)
 	}
-	return ob.all(t, result)
-}
-
-//
-func (ob *Objects) all(ex execer, result interface{}) (err error) {
-	var _sql string
+	//
+	var (
+		sqlCmd string
+		fields = "*"
+	)
+	if ob.Model.DatabaseSQL.Unsafe == false {
+		fields = strings.Join(PubFieldWrapByDest(result), ",")
+	}
+	if len(ob.group) > 0 {
+		// group在postgres下的实现
+		fields = fmt.Sprintf(`DISTINCT ON (%s) %s`, strings.Join(PubFieldWrapAll(ob.group), ","), fields)
+	}
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
-		_sql = fmt.Sprintf(`SELECT * FROM %s %s %s %s`,
-			ob.Model.GetTable(), ob.cacheQueryGroup, ob.cacheQueryOrder, ob.cacheQueryLimit)
-		_sql = strings.ReplaceAll(_sql, "  ", " ")
-		if err = ex.Select(result, _sql); err != nil {
-			ob.log.Errorf(`[sql-all] %s err: %v`, _sql, err)
+		sqlCmd = fmt.Sprintf(`SELECT %s FROM %s %s %s`,
+			fields, ob.Model.GetTable(), ob.cacheQueryOrder, ob.cacheQueryLimit)
+		sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
+		if err = ex.Select(result, sqlCmd); err != nil {
+			ob.log.Errorf(`[sql-all] %s err: %v`, sqlCmd, err)
 		}
 	} else {
 		// select query
-		_sql = fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s %s`,
-			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryGroup, ob.cacheQueryOrder, ob.cacheQueryLimit)
-		_sql = strings.ReplaceAll(_sql, "  ", " ")
-		if err = ex.Select(result, _sql, ob.cacheQueryValues...); err != nil {
-			ob.log.Errorf(`[sql-all] %s VAL: %v err: %v`, _sql, ob.cacheQueryValues, err)
+		sqlCmd = fmt.Sprintf(`SELECT %s FROM %s WHERE %s %s %s`,
+			fields, ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
+		if err = ex.Select(result, sqlCmd, ob.cacheQueryValues...); err != nil {
+			ob.log.Errorf(`[sql-all] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
 		}
 	}
 
@@ -235,7 +241,7 @@ func (ob *Objects) all(ex execer, result interface{}) (err error) {
 			ob.nums = v.Len()
 		}
 		// debug
-		ob.log.Debugf(`[sql-all] %s`, _sql)
+		ob.log.Debugf(`[sql-all] %s`, sqlCmd)
 	}
 
 	return
@@ -268,20 +274,23 @@ func (ob *Objects) countDo(ex execer) (num int, err error) {
 	if err = ob.updateQuery(); err != nil {
 		return
 	}
-	var sqlCmd string
-	if len(ob.cacheQueryWhere) == 0 {
-		// select all
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM %s`, ob.Model.GetTable())
-		if err = ex.Get(&num, sqlCmd); err != nil {
-			ob.log.Errorf(`[sql-count] %s err: %v`, sqlCmd, err)
-		}
-	} else {
-		// count have not limit
-		sqlCmd = fmt.Sprintf(`SELECT count(*) FROM %s WHERE %s`, ob.Model.GetTable(), ob.cacheQueryWhere)
-		if err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...); err != nil {
-			ob.log.Errorf(`[sql-count] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
-		}
+	var (
+		sqlCmd string
+		fields = "*"
+		where  = ""
+	)
+	if len(ob.cacheQueryWhere) > 0 {
+		where = fmt.Sprintf("WHERE %s", ob.cacheQueryWhere)
 	}
+	if len(ob.group) > 0 {
+		fields = fmt.Sprintf(`DISTINCT (%s)`, strings.Join(PubFieldWrapAll(ob.group), ","))
+	}
+	sqlCmd = fmt.Sprintf(`SELECT count(%s) FROM %s %s`, fields, ob.Model.GetTable(), where)
+	sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
+	if err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...); err != nil {
+		ob.log.Errorf(`[sql-count] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
+	}
+
 	if err == nil {
 		ob.count = num
 		// debug
@@ -301,6 +310,13 @@ func (ob *Objects) TOne(result interface{}, _t orm.Trans) (err error) {
 		return
 	}
 	if ob.count == 1 {
+		var (
+			sqlCmd string
+			field  = "*"
+		)
+		if ob.Model.DatabaseSQL.Unsafe == false {
+			field = strings.Join(PubFieldWrapByDest(result), ",")
+		}
 		//
 		if _t == nil {
 			return orm.ErrTransEmpty
@@ -310,8 +326,8 @@ func (ob *Objects) TOne(result interface{}, _t orm.Trans) (err error) {
 			return orm.ErrTransInvalid
 		}
 		//
-		sqlCmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s`,
-			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		sqlCmd = fmt.Sprintf(`SELECT %s FROM %s WHERE %s %s %s`,
+			field, ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
 		err = t.Get(result, sqlCmd, ob.cacheQueryValues...)
 		if err != nil {
 			ob.log.Errorf(`[sql-one-t] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
@@ -333,8 +349,16 @@ func (ob *Objects) One(result interface{}) (err error) {
 		return
 	}
 	if ob.count == 1 {
-		sqlCmd := fmt.Sprintf(`SELECT * FROM %s WHERE %s %s %s`,
-			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		var (
+			sqlCmd string
+			field  = "*"
+		)
+		if ob.Model.DatabaseSQL.Unsafe == false {
+			field = strings.Join(PubFieldWrapByDest(result), ",")
+		}
+		sqlCmd = fmt.Sprintf(`SELECT %s FROM %s WHERE %s %s %s`,
+			field, ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
 		err = ob.Model.DatabaseSQL.DB.Get(result, sqlCmd, ob.cacheQueryValues...)
 		if err != nil {
 			ob.log.Errorf(`[sql-one] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
