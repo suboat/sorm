@@ -360,6 +360,13 @@ func testModelGroup(t *testing.T) {
 		LogLevel: orm.LevelDebug,
 	}).Group(gps...).Filter(orm.M{"taxonomyID": "9606"}).Sort(gps...).Limit(10).All(&dl0))
 	as.Equal(1, len(dl0), "group object filter")
+	if true {
+		_count, _err := m0.ObjectsWith(&orm.ArgObjects{
+			LogLevel: orm.LevelDebug,
+		}).Group(gps...).Filter(orm.M{"taxonomyID": "9606"}).Sort(gps...).Limit(10).Count()
+		as.Nil(_err)
+		as.Equal(1, _count)
+	}
 }
 
 // 压力测试:建表删表
