@@ -271,8 +271,8 @@ func (ob *Objects) countDo(ex execer) (num int, err error) {
 	}
 	var (
 		sqlCmd string
-		where  = ""
 		fields = "*"
+		where  = ""
 	)
 	if len(ob.cacheQueryWhere) > 0 {
 		where = fmt.Sprintf("WHERE %s", ob.cacheQueryWhere)
