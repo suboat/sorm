@@ -277,16 +277,24 @@ func (ob *Objects) countDo(ex execer) (num int, err error) {
 	if err = ob.updateQuery(); err != nil {
 		return
 	}
-	var sqlCmd string
+	var (
+		sqlCmd string
+		fields = "*"
+	)
+	if len(ob.cacheQueryGroup) > 0 {
+		fields = strings.ReplaceAll(ob.cacheQueryGroup, "GROUP BY", "DISTINCT")
+	}
 	if len(ob.cacheQueryWhere) == 0 {
 		// select all
-		sqlCmd = fmt.Sprintf("SELECT count(*) FROM %s", ob.Model.GetTable())
+		sqlCmd = fmt.Sprintf("SELECT count(%s) FROM %s", fields, ob.Model.GetTable())
+		sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
 		if err = ex.Get(&num, sqlCmd); err != nil {
 			ob.log.Errorf("[sql-count] `%s` err: %v", sqlCmd, err)
 		}
 	} else {
 		// count have not limit
-		sqlCmd = fmt.Sprintf("SELECT count(*) FROM %s WHERE %s", ob.Model.GetTable(), ob.cacheQueryWhere)
+		sqlCmd = fmt.Sprintf("SELECT count(%s) FROM %s WHERE %s", fields, ob.Model.GetTable(), ob.cacheQueryWhere)
+		sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
 		if err = ex.Get(&num, sqlCmd, ob.cacheQueryValues...); err != nil {
 			ob.log.Errorf("[sql-count] %s VAL: %v err: %v", sqlCmd, ob.cacheQueryValues, err)
 		}
