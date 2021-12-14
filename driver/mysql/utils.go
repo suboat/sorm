@@ -1,8 +1,12 @@
 package mysql
 
 import (
+	"github.com/suboat/sorm"
+
+	"fmt"
 	"reflect"
 	"regexp"
+	"strings"
 	"time"
 )
 
@@ -10,6 +14,35 @@ var (
 	// 时间格式转换
 	RegTimeWithZone = regexp.MustCompile(`^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}.*`)
 )
+
+//
+func PubFieldWrap(s string) (ret string) {
+	return fmt.Sprintf(`"%s"`, strings.ToLower(s))
+}
+
+//
+func PubFieldWrapAll(s []string) (ret []string) {
+	for _, v := range s {
+		ret = append(ret, PubFieldWrap(v))
+	}
+	return
+}
+
+//
+func PubFieldWrapByFieldInfo(s []*orm.FieldInfo) (ret []string) {
+	for _, v := range s {
+		ret = append(ret, PubFieldWrap(v.Name))
+	}
+	return
+}
+
+//
+func PubFieldWrapByDest(dest interface{}) (ret []string) {
+	if _ret, _err := orm.StructModelInfoByDest(dest); _err == nil {
+		return PubFieldWrapByFieldInfo(_ret)
+	}
+	return
+}
 
 // PubTimeConvert 转换为UTC时间
 func PubTimeConvert(in string) string {

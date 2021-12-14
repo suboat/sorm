@@ -318,6 +318,13 @@ func (ob *Objects) TOne(result interface{}, _t orm.Trans) (err error) {
 		return
 	}
 	if ob.count == 1 {
+		var (
+			sqlCmd string
+			field  = "*"
+		)
+		if ob.Model.DatabaseSQL.Unsafe == false && false {
+			field = strings.Join(PubFieldWrapByDest(result), ",")
+		}
 		//
 		if _t == nil {
 			return orm.ErrTransEmpty
@@ -327,8 +334,8 @@ func (ob *Objects) TOne(result interface{}, _t orm.Trans) (err error) {
 			return orm.ErrTransInvalid
 		}
 		//
-		sqlCmd := fmt.Sprintf("SELECT * FROM %s WHERE %s %s %s",
-			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		sqlCmd = fmt.Sprintf("SELECT %s FROM %s WHERE %s %s %s",
+			field, ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
 		err = t.Get(result, sqlCmd, ob.cacheQueryValues...)
 		if err != nil {
 			ob.log.Errorf("[sql-one-t] `%s` VAL: %v err: %v", sqlCmd, ob.cacheQueryValues, err)
@@ -350,8 +357,15 @@ func (ob *Objects) One(result interface{}) (err error) {
 		return
 	}
 	if ob.count == 1 {
-		sqlCmd := fmt.Sprintf("SELECT * FROM %s WHERE %s %s %s",
-			ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
+		var (
+			sqlCmd string
+			field  = "*"
+		)
+		if ob.Model.DatabaseSQL.Unsafe == false && false {
+			field = strings.Join(PubFieldWrapByDest(result), ",")
+		}
+		sqlCmd = fmt.Sprintf("SELECT %s FROM %s WHERE %s %s %s",
+			field, ob.Model.GetTable(), ob.cacheQueryWhere, ob.cacheQueryOrder, ob.cacheQueryLimit)
 		err = ob.Model.DatabaseSQL.DB.Get(result, sqlCmd, ob.cacheQueryValues...)
 		if err != nil {
 			ob.log.Errorf(`[sql-one] %s VAL: %v err: %v`, sqlCmd, ob.cacheQueryValues, err)
