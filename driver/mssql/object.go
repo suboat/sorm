@@ -117,6 +117,12 @@ func (ob *Objects) Group(fields ...string) orm.Objects {
 	return ob
 }
 
+// 聚合计算
+func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
+	ob.log.Debugf(`[sum-not-implement]`)
+	return
+}
+
 // Meta 信息
 func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	// may the 'limit' operating front, recount cache.

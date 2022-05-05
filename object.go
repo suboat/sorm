@@ -6,14 +6,15 @@ import (
 
 // Objects 数据对象操作
 type Objects interface {
-	// normal
-	Filter(M) Objects                // 搜索结果
+	// setting
+	Filter(M) Objects        // 搜索结果
+	Limit(int) Objects       // 限制
+	Skip(int) Objects        // 跳过
+	Sort(...string) Objects  // 排序
+	Group(...string) Objects // 去重
+	Meta() (*Meta, error)    // 摘要信息
+	// operate
 	Count() (int, error)             // 数目
-	Limit(int) Objects               // 限制
-	Skip(int) Objects                // 跳过
-	Sort(...string) Objects          // 排序
-	Group(...string) Objects         // 去重
-	Meta() (*Meta, error)            // 摘要信息
 	All(result interface{}) error    // 保存搜索结果至
 	One(result interface{}) error    // 取一条记录
 	Create(insert interface{}) error // 插入一条记录
@@ -21,6 +22,7 @@ type Objects interface {
 	UpdateOne(obj interface{}) error // 只确保更改一条(输入struct或map)
 	Delete() error                   // 删除
 	DeleteOne() error                // 删除一条记录
+	Sum(...string) ([]int, error)    // 聚合计算
 	// 事务操作
 	TLockUpdate(t Trans) error                 // 行锁
 	TCount(t Trans) (int, error)               // 数目

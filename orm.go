@@ -100,7 +100,7 @@ type Meta struct {
 	Num   int         `json:"num,omitempty"`   // 可选信息.直接告知此次返回的数据条数,免去读取数据字段
 	Key   interface{} `json:"key,omitempty"`   // 可选信息.刚才用户提交的搜索信息
 	Sort  interface{} `json:"sort,omitempty"`  // 可选信息.刚才用户提交的排序信息
-	Group interface{} `json:"group,omitempty"` // 可选信息.刚才用户提交的排序信息
+	Group interface{} `json:"group,omitempty"` // 可选信息.刚才用户提交的聚合计算参数
 }
 
 // Logger 日志输出

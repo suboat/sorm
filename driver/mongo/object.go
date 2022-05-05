@@ -142,6 +142,12 @@ func (o *Objects) Group(fields ...string) orm.Objects {
 	return o
 }
 
+// 聚合计算
+func (o *Objects) Sum(fields ...string) (ret []int, err error) {
+	o.log.Debugf(`[sum-not-implement]`)
+	return
+}
+
 // Meta 摘要
 func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	if ob.err != nil {
