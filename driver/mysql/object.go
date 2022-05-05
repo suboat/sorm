@@ -131,6 +131,55 @@ func (ob *Objects) Group(fields ...string) orm.Objects {
 // 聚合计算
 func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
 	ob.log.Debugf(`[sum-not-implement]`)
+	var (
+		keys   []string
+		query  []string
+		result = map[string]int{}
+	)
+	for _, v := range fields {
+		if _, ok := result[v]; ok {
+			continue
+		}
+		result[v] = 0
+		if strings.Contains(v, " ") {
+			// invalid field name
+			continue
+		}
+		keys = append(keys, v)
+		query = append(query, fmt.Sprintf("SUM(%s) AS %s", v, v))
+	}
+	if len(query) > 0 {
+		// TODO: 一次执行完
+		q := strings.Join(query, ", ")
+		for i, v := range query {
+			q = v
+			sqlCmd := ""
+			ex := ob.Model.DatabaseSQL.DB
+			// rec := map[string]interface{}{}
+			var rec int
+			if len(ob.cacheQueryWhere) == 0 {
+				// select all
+				sqlCmd = fmt.Sprintf("SELECT %s FROM %s", q, ob.Model.GetTable())
+				sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
+				if err = ex.Get(&rec, sqlCmd); err != nil {
+					ob.log.Errorf("[sql-sum] `%s` err: %v", sqlCmd, err)
+				}
+			} else {
+				// select where
+				sqlCmd = fmt.Sprintf("SELECT %s FROM %s WHERE %s", q, ob.Model.GetTable(), ob.cacheQueryWhere)
+				sqlCmd = strings.ReplaceAll(sqlCmd, "  ", " ")
+				if err = ex.Get(&rec, sqlCmd, ob.cacheQueryValues...); err != nil {
+					ob.log.Errorf("[sql-sum] %s VAL: %v err: %v", sqlCmd, ob.cacheQueryValues, err)
+				}
+			}
+			// ob.log.Debugf("[sql-sum] %s -> %v", sqlCmd, rec)
+			result[keys[i]] = rec
+		}
+	}
+	//
+	for _, v := range fields {
+		ret = append(ret, result[v])
+	}
 	return
 }
 

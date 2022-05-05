@@ -261,6 +261,15 @@ func Test_ModelEnsure(t *testing.T) {
 	default:
 		testModelGroup(t)
 	}
+
+	// sum
+	switch TestName {
+	case orm.DriverNameMongo:
+		// 目前无法通过测试
+		break
+	default:
+		testModelSum(t)
+	}
 }
 
 func testModelVirtual(t *testing.T) {
@@ -365,6 +374,29 @@ func testModelGroup(t *testing.T) {
 		}).Group(gps...).Filter(orm.M{"taxonomyID": "9606"}).Sort(gps...).Limit(10).Count()
 		as.Nil(_err)
 		as.Equal(1, _count)
+	}
+}
+
+//
+func testModelSum(t *testing.T) {
+	as := require.New(t)
+	as.Nil(nil)
+	var (
+		db   = testGetDB()
+		tbl0 = "test_Programmer"
+		sum  = []string{
+			"taxonomyID",
+			"lastName",
+			"chromosomes",
+		}
+		//
+		m0 = db.Model(tbl0)
+	)
+	//
+	if true {
+		ret, err := m0.Objects().Sum(sum...)
+		as.Nil(err)
+		t.Logf("sum %v -> %v", sum, ret)
 	}
 }
 
