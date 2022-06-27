@@ -12,7 +12,8 @@ type Objects interface {
 	Skip(int) Objects        // 跳过
 	Sort(...string) Objects  // 排序
 	Group(...string) Objects // 去重
-	Meta() (*Meta, error)    // 摘要信息
+	SumBy(...string) Objects // 聚合计算
+	Meta() (*Meta, error)    // 延时摘要信息
 	// operate
 	Count() (int, error)             // 数目
 	All(result interface{}) error    // 保存搜索结果至
@@ -22,7 +23,7 @@ type Objects interface {
 	UpdateOne(obj interface{}) error // 只确保更改一条(输入struct或map)
 	Delete() error                   // 删除
 	DeleteOne() error                // 删除一条记录
-	Sum(...string) ([]int, error)    // 聚合计算
+	Sum(...string) ([]int, error)    // 立刻聚合计算
 	// 事务操作
 	TLockUpdate(t Trans) error                 // 行锁
 	TCount(t Trans) (int, error)               // 数目

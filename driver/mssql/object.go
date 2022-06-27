@@ -118,6 +118,9 @@ func (ob *Objects) Group(fields ...string) orm.Objects {
 }
 
 // 聚合计算
+func (ob *Objects) SumBy(fields ...string) orm.Objects {
+	return ob
+}
 func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
 	ob.log.Debugf(`[sum-not-implement]`)
 	return

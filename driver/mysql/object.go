@@ -25,10 +25,11 @@ type Objects struct {
 	nums  int // fetch num of query
 
 	// filter
-	queryM orm.M    // store filter regular
-	sorts  []string // sort
-	group  []string // group
-	sum    []string // sum
+	queryM  orm.M    // store filter regular
+	sorts   []string // sort
+	group   []string // group
+	sum     []string // sum
+	sumJson string   // sum result
 
 	// cache: Query
 	cacheQueryClean  bool          // if true, update cacheQuery* mandatorily next time
@@ -130,6 +131,10 @@ func (ob *Objects) Group(fields ...string) orm.Objects {
 }
 
 // 聚合计算
+func (ob *Objects) SumBy(fields ...string) orm.Objects {
+	ob.sum = fields
+	return ob
+}
 func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
 	ob.log.Debugf(`[sum-not-implement]`)
 	var (
@@ -181,8 +186,6 @@ func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
 	for _, v := range fields {
 		ret = append(ret, result[v])
 	}
-	//
-	ob.sum = append(ob.sum, fields...)
 	return
 }
 
@@ -234,8 +237,25 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 		mt.Group = ob.group
 	}
 	// sum
-	if ob.sum != nil {
+	if len(ob.sum) > 0 {
 		mt.Sum = ob.sum
+		if len(ob.sumJson) == 0 {
+			// 延时聚合计算
+			var (
+				sList []int
+				sMap  = map[string]int{}
+			)
+			if sList, err = ob.Sum(ob.sum...); err != nil {
+				return
+			}
+			for i, v := range ob.sum {
+				sMap[v] = sList[i]
+			}
+			if _s, _err := json.Marshal(sMap); _err == nil {
+				ob.sumJson = string(_s)
+			}
+		}
+		mt.SumJson = ob.sumJson
 	}
 	return
 }
