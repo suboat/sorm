@@ -28,6 +28,7 @@ type Objects struct {
 	queryM orm.M    // store filter regular
 	sorts  []string // sort
 	group  []string // group
+	sum    []string // sum
 
 	// cache: Query
 	cacheQueryClean  bool          // if true, update cacheQuery* mandatorily next time
@@ -180,6 +181,8 @@ func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
 	for _, v := range fields {
 		ret = append(ret, result[v])
 	}
+	//
+	ob.sum = append(ob.sum, fields...)
 	return
 }
 
@@ -229,6 +232,10 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 	// group
 	if ob.group != nil {
 		mt.Group = ob.group
+	}
+	// sum
+	if ob.sum != nil {
+		mt.Sum = ob.sum
 	}
 	return
 }
