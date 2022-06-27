@@ -401,7 +401,10 @@ func testModelSum(t *testing.T) {
 	if true {
 		meta, err := m0.Objects().SumBy(sum...).Meta()
 		as.Nil(err)
-		t.Logf("sum-meta %v -> %v -> %v", sum, meta, meta.SumJson)
+		t.Logf("sum-meta %v -> %v", sum, meta.SumJson)
+		meta, err = m0.Objects().SumBy(sum...).Meta()
+		as.Nil(err)
+		t.Logf("sum-meta %v -> %v", sum, meta.SumJson)
 	}
 }
 
