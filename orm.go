@@ -92,10 +92,10 @@ type Meta struct {
 	// 逻辑信息
 	Ver string `json:"ver,omitempty"` // meta协议版本号
 	// 内容
-	Count   int `json:"count"`             // 同sql里的 count/total，总数
-	Limit   int `json:"limit"`             // 同sql里的 limit
-	Page    int `json:"page"`              // 0起始.直接告知当前页码,免去通过skip与limit计算
-	SumJson int `json:"sumJson,omitempty"` // 返回聚合计算结果
+	Count   int    `json:"count"`             // 同sql里的 count/total，总数
+	Limit   int    `json:"limit"`             // 同sql里的 limit
+	Page    int    `json:"page"`              // 0起始.直接告知当前页码,免去通过skip与limit计算
+	SumJson string `json:"sumJson,omitempty"` // 返回聚合计算结果
 	// 可选信息
 	Skip  int         `json:"skip,omitempty"`  // 可选，不常用. 同sql里的 skip
 	Num   int         `json:"num,omitempty"`   // 可选信息.直接告知此次返回的数据条数,免去读取数据字段
