@@ -135,12 +135,12 @@ func (ob *Objects) SumBy(fields ...string) orm.Objects {
 	ob.sum = fields
 	return ob
 }
-func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
+func (ob *Objects) Sum(fields ...string) (ret []float64, err error) {
 	ob.log.Debugf(`[sum-not-implement]`)
 	var (
 		keys   []string
 		query  []string
-		result = map[string]int{}
+		result = map[string]float64{}
 	)
 	for _, v := range fields {
 		if _, ok := result[v]; ok {
@@ -162,7 +162,7 @@ func (ob *Objects) Sum(fields ...string) (ret []int, err error) {
 			sqlCmd := ""
 			ex := ob.Model.DatabaseSQL.DB
 			// rec := map[string]interface{}{}
-			var rec int
+			var rec float64
 			if len(ob.cacheQueryWhere) == 0 {
 				// select all
 				sqlCmd = fmt.Sprintf("SELECT %s FROM %s", q, ob.Model.GetTable())
@@ -242,8 +242,8 @@ func (ob *Objects) Meta() (mt *orm.Meta, err error) {
 		if len(ob.sumJson) == 0 {
 			// 延时聚合计算
 			var (
-				sList []int
-				sMap  = map[string]int{}
+				sList []float64
+				sMap  = map[string]float64{}
 			)
 			if sList, err = ob.Sum(ob.sum...); err != nil {
 				return
